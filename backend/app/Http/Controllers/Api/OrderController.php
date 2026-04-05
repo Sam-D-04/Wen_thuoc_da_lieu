@@ -56,7 +56,31 @@ class OrderController extends Controller
         $user = $request->user();
 
         return DB::transaction(function () use ($validated, $user) {
-            // 1. Save or create address
+            // 1. Kiểm tra tồn kho và tính tổng tiền trước
+            $totalAmount = 0;
+            $itemsSummary = [];
+
+            foreach ($validated['items'] as $item) {
+                $product = Product::lockForUpdate()->findOrFail($item['product_id']);
+                $needed  = $item['quantity'];
+
+                if ($product->stock_quantity < $needed) {
+                    throw new \Exception("Sản phẩm \"{$product->name}\" không đủ hàng (Kho chỉ còn {$product->stock_quantity}).");
+                }
+
+                $totalAmount += $product->price_listed * $needed;
+                
+                $itemsSummary[] = [
+                    'product_id' => $product->id,
+                    'quantity'   => $needed,
+                    'price'      => $product->price_listed,
+                ];
+            }
+
+            // 2. Tính phí ship và tạo Order (Tạo rỗng để lấy order_id trước)
+            $shippingFee  = $totalAmount >= 299000 ? 0 : 25000;
+            $finalAmount  = $totalAmount + $shippingFee;
+
             $address = UserAddress::create([
                 'user_id'      => $user->id,
                 'full_name'    => $validated['address']['full_name'],
@@ -67,55 +91,6 @@ class OrderController extends Controller
                 'city'         => $validated['address']['city'],
             ]);
 
-            $totalAmount = 0;
-            $orderItemsData = [];
-
-            // 2. FEFO batch assignment
-            foreach ($validated['items'] as $item) {
-                $product  = Product::lockForUpdate()->findOrFail($item['product_id']);
-                $needed   = $item['quantity'];
-
-                if ($product->stock_quantity < $needed) {
-                    throw new \Exception("Sản phẩm \"{$product->name}\" không đủ hàng.");
-                }
-
-                // Get batches sorted by expiry ASC (FEFO)
-                $batches = Batch::where('product_id', $product->id)
-                    ->where('remaining_quantity', '>', 0)
-                    ->orderBy('expiry_date')
-                    ->lockForUpdate()
-                    ->get();
-
-                $remaining = $needed;
-                foreach ($batches as $batch) {
-                    if ($remaining <= 0) break;
-
-                    $take = min($batch->remaining_quantity, $remaining);
-                    $batch->decrement('remaining_quantity', $take);
-                    $remaining -= $take;
-
-                    $subtotal = $product->price_listed * $take;
-                    $totalAmount += $subtotal;
-
-                    $orderItemsData[] = [
-                        'product_id' => $product->id,
-                        'batch_id'   => $batch->id,
-                        'quantity'   => $take,
-                        'price'      => $product->price_listed,
-                        'total'      => $subtotal,
-                    ];
-                }
-
-                // Update product stock
-                $product->decrement('stock_quantity', $needed);
-                $product->increment('sold_count', $needed);
-            }
-
-            // 3. Shipping fee
-            $shippingFee  = $totalAmount >= 299000 ? 0 : 25000;
-            $finalAmount  = $totalAmount + $shippingFee;
-
-            // 4. Create order
             $order = Order::create([
                 'user_id'        => $user->id,
                 'address_id'     => $address->id,
@@ -129,13 +104,17 @@ class OrderController extends Controller
                 'note'           => $validated['note'] ?? null,
             ]);
 
-            // 5. Create order items
-            foreach ($orderItemsData as &$row) {
-                $row['order_id'] = $order->id;
+            // 3. Gọi MySQL Procedure để nó tự động chèn record vào `order_items` và trừ kho batches (Triggers sẽ tự lo `products`)
+            foreach ($itemsSummary as $sum) {
+                DB::statement('CALL sp_allocate_order_fefo(?, ?, ?, ?)', [
+                    $order->id,
+                    $sum['product_id'],
+                    $sum['quantity'],
+                    $sum['price']
+                ]);
             }
-            OrderItem::insert($orderItemsData);
 
-            // 6. Create payment record
+            // 4. Tạo record thanh toán
             Payment::create([
                 'order_id'       => $order->id,
                 'amount'         => $finalAmount,

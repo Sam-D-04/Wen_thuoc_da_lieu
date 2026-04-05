@@ -44,9 +44,7 @@ class BatchController extends Controller
 
         $batch = Batch::create($validated);
 
-        // Update product stock
-        Product::where('id', $validated['product_id'])
-            ->increment('stock_quantity', $validated['quantity']);
+        // Update product stock (Đã được xử lý ngầm trong MySQL bằng AFTER_BATCH_INSERT Trigger)
 
         // Log inventory transaction
         InventoryTransaction::create([
