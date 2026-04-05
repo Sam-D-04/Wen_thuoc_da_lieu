@@ -93,6 +93,7 @@
         >
           {{ cat.name }}
         </button>
+        <p v-if="!categoryShortcuts.length" class="text-sm text-gray-400">Chưa có danh mục để hiển thị</p>
       </div>
     </div>
 
@@ -101,7 +102,7 @@
       <div class="flex items-center justify-between mb-5">
         <div>
           <h2 class="text-xl font-bold text-gray-800">
-            {{ selectedCategory ? categoryShortcuts.find(c => c.slug === selectedCategory)?.name : 'Tất cả sản phẩm' }}
+            {{ selectedCategory ? (categoryShortcuts.find(c => c.slug === selectedCategory)?.name || 'Danh mục đã chọn') : 'Tất cả sản phẩm' }}
           </h2>
           <p class="text-sm text-gray-400">{{ displayedProducts.length }} sản phẩm</p>
         </div>
@@ -154,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '@/stores/shopProducts'
 import { useCartStore } from '@/stores/cart'
@@ -175,15 +176,48 @@ watch(() => route.query, (q) => {
   searchQuery.value = q.q || ''
 })
 
-const categoryShortcuts = [
-  { slug: 'tri-mun',             name: 'Trị mụn',            color: 'bg-green-50  text-green-700  border-green-200  hover:bg-green-100',  activeColor: 'bg-green-600  text-white border-green-600' },
-  { slug: 'chong-nang',          name: 'Chống nắng',          color: 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100', activeColor: 'bg-orange-500 text-white border-orange-500' },
-  { slug: 'duong-am',            name: 'Dưỡng ẩm',            color: 'bg-sky-50    text-sky-700    border-sky-200    hover:bg-sky-100',    activeColor: 'bg-sky-600    text-white border-sky-600' },
-  { slug: 'tri-nam',             name: 'Trị nám',             color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100', activeColor: 'bg-purple-600 text-white border-purple-600' },
-  { slug: 'lam-sang-da',         name: 'Làm sáng da',         color: 'bg-amber-50  text-amber-700  border-amber-200  hover:bg-amber-100',  activeColor: 'bg-amber-500  text-white border-amber-500' },
-  { slug: 'thuc-pham-chuc-nang', name: 'Thực phẩm CN',        color: 'bg-teal-50   text-teal-700   border-teal-200   hover:bg-teal-100',   activeColor: 'bg-teal-600   text-white border-teal-600' },
-  { slug: 'cham-soc-co-the',     name: 'Cơ thể',               color: 'bg-pink-50   text-pink-700   border-pink-200   hover:bg-pink-100',   activeColor: 'bg-pink-600   text-white border-pink-600' },
+const chipThemes = [
+  {
+    color: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
+    activeColor: 'bg-green-600 text-white border-green-600'
+  },
+  {
+    color: 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100',
+    activeColor: 'bg-orange-500 text-white border-orange-500'
+  },
+  {
+    color: 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+    activeColor: 'bg-sky-600 text-white border-sky-600'
+  },
+  {
+    color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+    activeColor: 'bg-purple-600 text-white border-purple-600'
+  },
+  {
+    color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+    activeColor: 'bg-amber-500 text-white border-amber-500'
+  },
+  {
+    color: 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100',
+    activeColor: 'bg-teal-600 text-white border-teal-600'
+  },
+  {
+    color: 'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100',
+    activeColor: 'bg-pink-600 text-white border-pink-600'
+  }
 ]
+
+const categoryShortcuts = computed(() => {
+  return productStore.categories.map((cat, index) => {
+    const theme = chipThemes[index % chipThemes.length]
+    return {
+      slug: cat.slug,
+      name: cat.name,
+      color: theme.color,
+      activeColor: theme.activeColor
+    }
+  })
+})
 
 const stats = [
   { label: 'Sản phẩm', value: '500+', icon: '<svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
@@ -210,4 +244,20 @@ const handleAddToCart = (product) => {
 const handleViewProduct = (product) => {
   router.push(`/shop/product/${product.slug}`)
 }
+
+onMounted(async () => {
+  const tasks = []
+
+  if (!productStore.products.length) {
+    tasks.push(productStore.fetchProducts())
+  }
+
+  if (!productStore.categories.length) {
+    tasks.push(productStore.fetchCategories())
+  }
+
+  if (tasks.length) {
+    await Promise.all(tasks)
+  }
+})
 </script>

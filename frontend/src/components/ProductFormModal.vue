@@ -35,6 +35,7 @@
               <option value="">Chọn danh mục</option>
               <option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option>
             </select>
+            <small v-if="errors.category_id" class="error-text">{{ errors.category_id }}</small>
           </label>
 
           <label>
@@ -77,6 +78,7 @@
               @input="updateField('dosage_form', $event.target.value)"
               placeholder="Gel, kem, serum..."
             >
+            <small v-if="errors.dosage_form" class="error-text">{{ errors.dosage_form }}</small>
           </label>
         </div>
 
@@ -89,6 +91,7 @@
               @input="updateField('volume', $event.target.value)"
               placeholder="30ml"
             >
+            <small v-if="errors.volume" class="error-text">{{ errors.volume }}</small>
           </label>
 
           <label class="switch-row">
@@ -117,6 +120,7 @@
           <span>Hình ảnh</span>
           <input type="file" accept="image/*" @change="handleImageChange">
         </label>
+        <small v-if="errors.image" class="error-text">{{ errors.image }}</small>
 
         <div class="image-preview">
           <img v-if="previewUrl" :src="previewUrl" alt="Xem trước">
@@ -129,6 +133,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  timeout: 10000
+})
 
 const props = defineProps({
   initialProduct: {
@@ -152,21 +162,6 @@ const EMPTY_FORM = {
   is_active: true
 }
 
-const DEFAULT_CATEGORIES = [
-  { id: 1, name: 'Mụn' },
-  { id: 2, name: 'Phục hồi da' },
-  { id: 3, name: 'Chống nắng' },
-  { id: 4, name: 'Viêm da' },
-  { id: 5, name: 'Chống lão hóa' },
-  { id: 6, name: 'Tẩy trang' }
-]
-
-const DEFAULT_BRANDS = [
-  { id: 1, name: 'Dermacity' },
-  { id: 2, name: 'CeraCare' },
-  { id: 3, name: 'SkinLab' }
-]
-
 const form = reactive({ ...EMPTY_FORM })
 const errors = reactive({})
 const categories = ref([])
@@ -175,6 +170,7 @@ const loadingMeta = ref(false)
 const saving = ref(false)
 const slugLocked = ref(false)
 const previewUrl = ref('')
+const selectedImageFile = ref(null)
 
 const isEditMode = computed(() => Boolean(form.id))
 
@@ -216,6 +212,7 @@ const resetForm = (product = null) => {
   Object.keys(errors).forEach((key) => delete errors[key])
   slugLocked.value = Boolean(product?.slug)
   previewUrl.value = product?.image_url || product?.image || ''
+  selectedImageFile.value = null
 }
 
 const updateField = (field, value) => {
@@ -234,6 +231,8 @@ const handleImageChange = (event) => {
   const file = event.target.files?.[0]
   if (!file) return
 
+  selectedImageFile.value = file
+
   const reader = new FileReader()
   reader.onload = () => {
     previewUrl.value = String(reader.result || '')
@@ -248,9 +247,25 @@ const validateForm = () => {
     errors.name = 'Tên sản phẩm là bắt buộc.'
   }
 
+  if (!String(form.category_id || '').trim()) {
+    errors.category_id = 'Vui lòng chọn danh mục.'
+  }
+
   const price = Number(form.price_listed)
   if (!Number.isFinite(price) || price <= 0) {
     errors.price_listed = 'Giá niêm yết phải lớn hơn 0.'
+  }
+
+  if (!String(form.dosage_form || '').trim()) {
+    errors.dosage_form = 'Vui lòng nhập dạng bào chế.'
+  }
+
+  if (!String(form.volume || '').trim()) {
+    errors.volume = 'Vui lòng nhập dung tích.'
+  }
+
+  if (!isEditMode.value && !selectedImageFile.value) {
+    errors.image = 'Vui lòng chọn hình ảnh sản phẩm.'
   }
 
   return Object.keys(errors).length === 0
@@ -259,18 +274,15 @@ const validateForm = () => {
 const loadMeta = async () => {
   loadingMeta.value = true
   try {
-    const [categoryRes, brandRes] = await Promise.all([fetch('/categories'), fetch('/brands')])
-    const categoryData = categoryRes.ok ? await categoryRes.json() : []
-    const brandData = brandRes.ok ? await brandRes.json() : []
+    const [categoryRes, brandRes] = await Promise.all([apiClient.get('/categories'), apiClient.get('/brands')])
+    const categoryData = categoryRes.data || []
+    const brandData = brandRes.data || []
 
     categories.value = Array.isArray(categoryData) ? categoryData : categoryData.data || []
     brands.value = Array.isArray(brandData) ? brandData : brandData.data || []
-
-    if (!categories.value.length) categories.value = DEFAULT_CATEGORIES
-    if (!brands.value.length) brands.value = DEFAULT_BRANDS
   } catch (error) {
-    categories.value = DEFAULT_CATEGORIES
-    brands.value = DEFAULT_BRANDS
+    categories.value = []
+    brands.value = []
   } finally {
     loadingMeta.value = false
   }
@@ -293,7 +305,8 @@ const handleSubmit = async () => {
     dosage_form: form.dosage_form,
     volume: form.volume,
     is_active: Boolean(form.is_active),
-    image_url: previewUrl.value
+    image_url: previewUrl.value,
+    image_file: selectedImageFile.value
   }
 
   try {

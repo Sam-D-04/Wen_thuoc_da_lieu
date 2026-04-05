@@ -47,8 +47,8 @@
             <tr>
               <th class="col-batch">Mã lô</th>
               <th class="col-product">Sản phẩm</th>
-              <th class="col-qty">Số lượng</th>
-              <th class="col-remain">Tồn còn lại</th>
+              <th class="col-qty">Số lượng hiện tại</th>
+              <th class="col-remain">Số lượng nhập</th>
               <th class="col-expiry">Ngày hết hạn</th>
               <th class="col-days">Còn lại</th>
               <th class="col-status">Trạng thái</th>
@@ -78,10 +78,10 @@
                 </div>
               </td>
               <td class="col-qty">
-                <span class="qty-badge">{{ batch.quantity }}</span>
+                <span class="qty-badge remaining">{{ batch.remaining_quantity }}</span>
               </td>
               <td class="col-remain">
-                <span class="qty-badge remaining">{{ batch.remaining_quantity }}</span>
+                <span class="qty-badge">{{ batch.quantity }}</span>
               </td>
               <td class="col-expiry">{{ formatDate(batch.expiry_date) }}</td>
               <td class="col-days">

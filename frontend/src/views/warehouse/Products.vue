@@ -135,7 +135,7 @@ const normalizeStatus = (isActive) => (Boolean(isActive) ? 'Hoạt động' : 'N
 
 const getStatusClass = (isActive) => (Boolean(isActive) ? 'active' : 'inactive')
 
-const resolveImage = (product) => product.image_url || product.image || 'https://via.placeholder.com/44x44?text=SP'
+const resolveImage = (product) => product.image_url || product.image || '/product-placeholder.svg'
 
 const resolveSlug = (product) => {
   if (product.slug) return product.slug

@@ -9,8 +9,8 @@
         <div class="title-wrap">
           <span class="title-icon" aria-hidden="true">📦</span>
           <div>
-            <h1>Quản lý tồn kho</h1>
-            <p>Theo dõi lịch sử nhập xuất tồn kho</p>
+            <h1>Lịch sử nhập/xuất kho</h1>
+            <p>Dữ liệu thực từ giao dịch tồn kho và đơn hàng</p>
           </div>
         </div>
       </header>
@@ -22,15 +22,15 @@
         </article>
         <article class="stat-card">
           <p>Tổng xuất</p>
-          <strong class="value negative">{{ stats.totalExport }}</strong>
+          <strong class="value negative">-{{ stats.totalExport }}</strong>
+        </article>
+        <article class="stat-card">
+          <p>Giao dịch hôm nay</p>
+          <strong class="value">{{ stats.todayTransactions }}</strong>
         </article>
         <article class="stat-card">
           <p>Tồn kho hiện tại</p>
           <strong class="value">{{ stats.currentStock }}</strong>
-        </article>
-        <article class="stat-card">
-          <p>Số giao dịch hôm nay</p>
-          <strong class="value">{{ stats.todayTransactions }}</strong>
         </article>
       </section>
 
@@ -39,14 +39,14 @@
           v-model="filters.search"
           type="search"
           class="filter-input search"
-          placeholder="Tìm theo sản phẩm, mã lô, reference..."
+          placeholder="Tìm theo sản phẩm, mã lô, mã đơn..."
         >
 
         <select v-model="filters.type" class="filter-input select">
-          <option value="all">Tất cả</option>
+          <option value="all">Tất cả loại</option>
           <option value="import">Nhập kho</option>
           <option value="export">Xuất kho</option>
-          <option value="adjustment">Kiểm kê</option>
+          <option value="adjustment">Điều chỉnh</option>
         </select>
 
         <div class="date-range">
@@ -61,7 +61,7 @@
 
       <section class="table-section">
         <div class="table-head">
-          <h2>Lịch sử giao dịch tồn kho</h2>
+          <h2>Giao dịch tồn kho</h2>
           <button class="btn btn-export" @click="exportExcel">📄 Xuất Excel</button>
         </div>
 
@@ -106,18 +106,14 @@
                   </span>
                 </td>
                 <td>{{ item.product_name }}</td>
-                <td>{{ item.batch_code }}</td>
+                <td>{{ item.batch_code || '-' }}</td>
+                <td>{{ formatDate(item.expiry_date) }}</td>
                 <td>
-                  <span :class="expiryClass(item.expiry_date)">
-                    {{ formatDate(item.expiry_date) }}
-                  </span>
-                </td>
-                <td>
-                  <span :class="quantityClass(item)">
+                  <span :class="quantityClass(item.type)">
                     {{ formatQuantity(item) }}
                   </span>
                 </td>
-                <td>{{ item.reference_id }}</td>
+                <td>{{ item.reference_display }}</td>
                 <td>{{ item.created_by_name }}</td>
                 <td>{{ item.note || '-' }}</td>
               </tr>
@@ -150,6 +146,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import WarehouseSidebar from '@/components/warehouse/Sidebar.vue'
+import { warehouseApi } from '@/api/warehouse'
 
 const loading = ref(false)
 
@@ -170,74 +167,9 @@ const pageSizeOptions = [10, 25, 50]
 const stats = reactive({
   totalImport: 0,
   totalExport: 0,
-  currentStock: 0,
-  todayTransactions: 0
+  todayTransactions: 0,
+  currentStock: 0
 })
-
-const products = ref([
-  { id: 1, name: 'Effaclar Duo+M', stock_quantity: 42 },
-  { id: 2, name: 'Cicavit+ Creme', stock_quantity: 10 },
-  { id: 3, name: 'Cleanance SPF50+', stock_quantity: 28 },
-  { id: 4, name: 'Atoderm Intensive Baume', stock_quantity: 44 }
-])
-
-const batches = ref([
-  { id: 1, batch_code: 'LREF-2409-A', expiry_date: '2026-09-10' },
-  { id: 2, batch_code: 'SVRC-2411-A', expiry_date: '2026-11-20' },
-  { id: 3, batch_code: 'BIOA-2407-A', expiry_date: '2026-04-15' }
-])
-
-const users = ref([
-  { id: 1, name: 'Admin' },
-  { id: 2, name: 'Warehouse' }
-])
-
-const mockTransactions = [
-  {
-    id: 1,
-    product_id: 4,
-    batch_id: 3,
-    type: 'adjustment',
-    quantity: -2,
-    reference_id: 'ADJ-301',
-    note: 'Vỡ bao bì',
-    created_by: 1,
-    created_at: '2026-04-01 21:00'
-  },
-  {
-    id: 2,
-    product_id: 2,
-    batch_id: 2,
-    type: 'export',
-    quantity: -30,
-    reference_id: 'SO-2030',
-    note: 'Xuất nhà thuốc',
-    created_by: 2,
-    created_at: '2026-03-28 16:22'
-  },
-  {
-    id: 3,
-    product_id: 1,
-    batch_id: 1,
-    type: 'export',
-    quantity: -20,
-    reference_id: 'SO-2001',
-    note: 'Xuất bán lẻ',
-    created_by: 1,
-    created_at: '2026-03-05 17:02'
-  },
-  {
-    id: 4,
-    product_id: 1,
-    batch_id: 1,
-    type: 'import',
-    quantity: 60,
-    reference_id: 'IMP-1001',
-    note: 'Nhập kho đầu kỳ',
-    created_by: 1,
-    created_at: '2026-01-03 15:15'
-  }
-]
 
 const allTransactions = ref([])
 const filteredTransactions = ref([])
@@ -257,7 +189,7 @@ const paginatedTransactions = computed(() => {
   return filteredTransactions.value.slice(start, end)
 })
 
-const parseDate = (value) => new Date(String(value).replace(' ', 'T'))
+const parseDate = (value) => new Date(String(value || '').replace(' ', 'T'))
 
 const formatDateTime = (value) => {
   const d = parseDate(value)
@@ -271,6 +203,7 @@ const formatDateTime = (value) => {
 }
 
 const formatDate = (value) => {
+  if (!value) return '-'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return '-'
   const dd = String(d.getDate()).padStart(2, '0')
@@ -279,115 +212,107 @@ const formatDate = (value) => {
   return `${dd}/${mm}/${yyyy}`
 }
 
-const daysToExpiry = (value) => {
-  const end = new Date(value)
-  const now = new Date()
-  end.setHours(0, 0, 0, 0)
-  now.setHours(0, 0, 0, 0)
-  return Math.ceil((end - now) / (1000 * 60 * 60 * 24))
-}
-
-const expiryClass = (value) => {
-  const days = daysToExpiry(value)
-  if (days < 0) return 'expiry-expired'
-  if (days <= 30) return 'expiry-warning'
-  return 'expiry-safe'
-}
-
 const typeLabel = (type) => {
   if (type === 'import') return 'NHẬP KHO'
   if (type === 'export') return 'XUẤT KHO'
-  return 'KIỂM KÊ'
+  return 'ĐIỀU CHỈNH'
+}
+
+const quantityClass = (type) => {
+  if (type === 'export') return 'qty-negative'
+  return 'qty-positive'
 }
 
 const formatQuantity = (item) => {
-  const q = Number(item.quantity || 0)
-  if (item.type === 'import' && q > 0) return `+${q}`
-  if (item.type === 'export') return `-${Math.abs(q)}`
-  if (q > 0) return `+${q}`
-  return `${q}`
-}
-
-const quantityClass = (item) => {
-  const q = Number(item.quantity || 0)
-  if (item.type === 'import' || q > 0) return 'qty-positive'
-  if (item.type === 'export' || q < 0) return 'qty-negative'
-  return ''
+  const quantity = Number(item.quantity || 0)
+  if (item.type === 'export') return `-${Math.abs(quantity)}`
+  return `+${quantity}`
 }
 
 const fetchTransactions = async () => {
   loading.value = true
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 450))
+    const result = await warehouseApi.getInventoryTransactions({
+      page: 1,
+      pageSize: 500,
+      search: filters.search,
+      type: filters.type,
+      fromDate: filters.fromDate,
+      toDate: filters.toDate
+    })
 
-    const productMap = new Map(products.value.map((p) => [p.id, p]))
-    const batchMap = new Map(batches.value.map((b) => [b.id, b]))
-    const userMap = new Map(users.value.map((u) => [u.id, u]))
-
-    allTransactions.value = mockTransactions
-      .map((item) => ({
-        ...item,
-        product_name: productMap.get(item.product_id)?.name || 'N/A',
-        batch_code: batchMap.get(item.batch_id)?.batch_code || 'N/A',
-        expiry_date: batchMap.get(item.batch_id)?.expiry_date || null,
-        created_by_name: userMap.get(item.created_by)?.name || 'N/A'
-      }))
-      .sort((a, b) => parseDate(b.created_at) - parseDate(a.created_at))
+    allTransactions.value = (result.data || []).map((item) => ({
+      id: item.id,
+      type: item.type,
+      quantity: Number(item.quantity || 0),
+      created_at: item.created_at,
+      product_name: item.product?.name || '-',
+      batch_code: item.batch?.batch_code || '-',
+      expiry_date: item.batch?.expiry_date || null,
+      reference_id: item.reference_id,
+      reference_display: item.reference_id ? `#${item.reference_id}` : '-',
+      created_by_name: item.created_by?.name || '-',
+      note: item.note || ''
+    }))
 
     filteredTransactions.value = [...allTransactions.value]
+    calculateStats()
+    await loadCurrentStock()
+    pagination.page = 1
   } finally {
     loading.value = false
   }
 }
 
-const fetchStats = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 180))
+const loadCurrentStock = async () => {
+  let page = 1
+  let totalPages = 1
+  let totalStock = 0
 
-  stats.totalImport = 60
-  stats.totalExport = -50
-  stats.currentStock = products.value.reduce((sum, p) => sum + Number(p.stock_quantity || 0), 0)
-  stats.todayTransactions = 2
+  while (page <= totalPages) {
+    const result = await warehouseApi.getInventory({ page, pageSize: 100 })
+    const items = Array.isArray(result?.data) ? result.data : []
+
+    totalStock += items.reduce((sum, item) => sum + Number(item.stock_quantity || 0), 0)
+    totalPages = Number(result?.meta?.totalPages || 1)
+    page += 1
+  }
+
+  stats.currentStock = totalStock
 }
 
-const filterTransactions = () => {
-  const search = filters.search.trim().toLowerCase()
-  const from = filters.fromDate ? new Date(filters.fromDate) : null
-  const to = filters.toDate ? new Date(filters.toDate) : null
+const calculateStats = () => {
+  stats.totalImport = filteredTransactions.value
+    .filter((item) => item.type === 'import')
+    .reduce((sum, item) => sum + Number(item.quantity || 0), 0)
 
-  if (from) from.setHours(0, 0, 0, 0)
-  if (to) to.setHours(23, 59, 59, 999)
+  stats.totalExport = filteredTransactions.value
+    .filter((item) => item.type === 'export')
+    .reduce((sum, item) => sum + Number(item.quantity || 0), 0)
 
-  filteredTransactions.value = allTransactions.value.filter((item) => {
-    const itemDate = parseDate(item.created_at)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
-    const matchSearch =
-      !search ||
-      [item.product_name, item.batch_code, item.reference_id, item.note]
-        .join(' ')
-        .toLowerCase()
-        .includes(search)
+  stats.todayTransactions = filteredTransactions.value.filter((item) => {
+    const d = parseDate(item.created_at)
+    if (Number.isNaN(d.getTime())) return false
+    d.setHours(0, 0, 0, 0)
+    return d.getTime() === today.getTime()
+  }).length
 
-    const matchType = filters.type === 'all' || item.type === filters.type
-    const matchFrom = !from || itemDate >= from
-    const matchTo = !to || itemDate <= to
-
-    return matchSearch && matchType && matchFrom && matchTo
-  })
-
-  pagination.page = 1
 }
 
-const applyFilters = () => {
-  filterTransactions()
+const applyFilters = async () => {
+  await fetchTransactions()
 }
 
-const resetFilters = () => {
+const resetFilters = async () => {
   filters.search = ''
   filters.type = 'all'
   filters.fromDate = ''
   filters.toDate = ''
-  filterTransactions()
+  await fetchTransactions()
 }
 
 const prevPage = () => {
@@ -413,7 +338,7 @@ const exportExcel = () => {
     item.batch_code,
     formatDate(item.expiry_date),
     formatQuantity(item),
-    item.reference_id,
+    item.reference_display,
     item.created_by_name,
     item.note || ''
   ])
@@ -432,7 +357,7 @@ const exportExcel = () => {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchTransactions(), fetchStats()])
+  await fetchTransactions()
 })
 </script>
 
@@ -644,21 +569,6 @@ onMounted(async () => {
 .badge-adjustment {
   background: #ffedd5;
   color: #c2410c;
-}
-
-.expiry-safe {
-  color: #16a34a;
-  font-weight: 700;
-}
-
-.expiry-warning {
-  color: #d97706;
-  font-weight: 700;
-}
-
-.expiry-expired {
-  color: #dc2626;
-  font-weight: 700;
 }
 
 .qty-positive {

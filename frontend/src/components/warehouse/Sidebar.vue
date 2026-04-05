@@ -69,7 +69,7 @@
 
           <div class="profile-dropdown">
             <button @click="toggleProfileDropdown" class="profile-btn">
-              <img src="https://via.placeholder.com/32" alt="Quản lý kho" class="avatar">
+              <img src="/avatar-placeholder.svg" alt="Quản lý kho" class="avatar">
               <span class="admin-name">Quản lý kho</span>
               <span class="dropdown-arrow">▼</span>
             </button>

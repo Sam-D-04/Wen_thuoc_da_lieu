@@ -67,7 +67,24 @@ class Product extends Model
     {
         if (!$this->image) return null;
         if (str_starts_with($this->image, 'http')) return $this->image;
-        return Storage::disk('public')->url($this->image);
+
+        $url = Storage::url($this->image);
+
+        if (str_starts_with($url, 'http')) {
+            $parts = parse_url($url);
+            $host = $parts['host'] ?? '';
+            $port = $parts['port'] ?? null;
+
+            if ($host === 'localhost' && !$port && request()) {
+                $path = $parts['path'] ?? '';
+                return rtrim(request()->getSchemeAndHttpHost(), '/') . $path;
+            }
+
+            return $url;
+        }
+
+        $origin = request()?->getSchemeAndHttpHost() ?: rtrim(config('app.url'), '/');
+        return rtrim($origin, '/') . '/' . ltrim($url, '/');
     }
 
     public function getIsLowStockAttribute(): bool

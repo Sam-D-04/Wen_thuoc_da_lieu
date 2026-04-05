@@ -174,30 +174,47 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
+import { useProductStore } from '@/stores/shopProducts'
 import CartDrawer from '@/components/storefront/CartDrawer.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const productStore = useProductStore()
 const searchQuery = ref('')
 
-const categories = [
-  { id: 1, slug: 'tri-mun',              name: 'Trị mụn',               color: 'bg-green-50  text-green-700  border-green-200  hover:bg-green-100' },
-  { id: 2, slug: 'chong-nang',           name: 'Chống nắng',             color: 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100' },
-  { id: 3, slug: 'duong-am',             name: 'Dưỡng ẩm',               color: 'bg-sky-50    text-sky-700    border-sky-200    hover:bg-sky-100' },
-  { id: 4, slug: 'tri-nam',              name: 'Trị nám',                color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
-  { id: 5, slug: 'lam-sang-da',          name: 'Làm sáng da',            color: 'bg-amber-50  text-amber-700  border-amber-200  hover:bg-amber-100' },
-  { id: 6, slug: 'thuc-pham-chuc-nang',  name: 'Thực phẩm chức năng',    color: 'bg-teal-50   text-teal-700   border-teal-200   hover:bg-teal-100' },
-  { id: 7, slug: 'cham-soc-co-the',      name: 'Chăm sóc cơ thể',        color: 'bg-pink-50   text-pink-700   border-pink-200   hover:bg-pink-100' },
+const chipThemes = [
+  'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',
+  'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100',
+  'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100',
+  'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+  'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100',
+  'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100',
+  'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100'
 ]
+
+const categories = computed(() => {
+  return productStore.categories.map((item, index) => ({
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    color: chipThemes[index % chipThemes.length]
+  }))
+})
 
 const handleSearch = () => {
   if (searchQuery.value.trim()) {
     router.push({ path: '/shop', query: { q: searchQuery.value.trim() } })
   }
 }
+
+onMounted(async () => {
+  if (!productStore.categories.length) {
+    await productStore.fetchCategories()
+  }
+})
 </script>

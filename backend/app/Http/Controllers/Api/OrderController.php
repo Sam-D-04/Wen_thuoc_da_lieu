@@ -7,15 +7,15 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\UserAddress;
 use App\Models\Product;
-use App\Models\Batch;
 use App\Models\Payment;
+use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use App\Services\VNPayService;
 
 class OrderController extends Controller
 {
-    // GET /api/orders  (user: own orders)
     public function index(Request $request)
     {
         $orders = Order::with(['items.product', 'address'])
@@ -26,7 +26,6 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
-    // GET /api/orders/{id}
     public function show(Request $request, int $id)
     {
         $order = Order::with(['items.product', 'items.batch', 'address', 'payment'])
@@ -36,7 +35,6 @@ class OrderController extends Controller
         return response()->json($order);
     }
 
-    // POST /api/orders  (Place order — FEFO batch assignment)
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -56,7 +54,10 @@ class OrderController extends Controller
         $user = $request->user();
 
         return DB::transaction(function () use ($validated, $user) {
-            // 1. Kiểm tra tồn kho và tính tổng tiền trước
+
+            $vnpay = app(VNPayService::class);
+
+            // 1. Kiểm tra tồn kho
             $totalAmount = 0;
             $itemsSummary = [];
 
@@ -64,20 +65,30 @@ class OrderController extends Controller
                 $product = Product::lockForUpdate()->findOrFail($item['product_id']);
                 $needed  = $item['quantity'];
 
-                if ($product->stock_quantity < $needed) {
-                    throw new \Exception("Sản phẩm \"{$product->name}\" không đủ hàng (Kho chỉ còn {$product->stock_quantity}).");
+                $batches = $product->batches()
+                    ->where('remaining_quantity', '>', 0)
+                    ->whereDate('expiry_date', '>=', now()->toDateString())
+                    ->orderBy('expiry_date', 'asc')
+                    ->lockForUpdate()
+                    ->get(['id', 'remaining_quantity']);
+
+                $availableQty = (int) $batches->sum('remaining_quantity');
+
+                if ($availableQty < $needed) {
+                    throw new \Exception("Sản phẩm \"{$product->name}\" không đủ hàng");
                 }
 
                 $totalAmount += $product->price_listed * $needed;
-                
+
                 $itemsSummary[] = [
                     'product_id' => $product->id,
                     'quantity'   => $needed,
                     'price'      => $product->price_listed,
+                    'batches'    => $batches,
                 ];
             }
 
-            // 2. Tính phí ship và tạo Order (Tạo rỗng để lấy order_id trước)
+            // 2. Tính tiền + tạo order
             $shippingFee  = $totalAmount >= 299000 ? 0 : 25000;
             $finalAmount  = $totalAmount + $shippingFee;
 
@@ -104,17 +115,48 @@ class OrderController extends Controller
                 'note'           => $validated['note'] ?? null,
             ]);
 
-            // 3. Gọi MySQL Procedure để nó tự động chèn record vào `order_items` và trừ kho batches (Triggers sẽ tự lo `products`)
+            // 3. FEFO theo batch còn hạn
             foreach ($itemsSummary as $sum) {
-                DB::statement('CALL sp_allocate_order_fefo(?, ?, ?, ?)', [
-                    $order->id,
-                    $sum['product_id'],
-                    $sum['quantity'],
-                    $sum['price']
-                ]);
+                $remaining = (int) $sum['quantity'];
+
+                foreach ($sum['batches'] as $batch) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
+
+                    $take = min((int) $batch->remaining_quantity, $remaining);
+                    if ($take <= 0) {
+                        continue;
+                    }
+
+                    OrderItem::create([
+                        'order_id'   => $order->id,
+                        'product_id' => $sum['product_id'],
+                        'batch_id'   => $batch->id,
+                        'quantity'   => $take,
+                        'price'      => $sum['price'],
+                        'total'      => $take * $sum['price'],
+                    ]);
+
+                    InventoryTransaction::create([
+                        'product_id'   => $sum['product_id'],
+                        'batch_id'     => $batch->id,
+                        'type'         => 'export',
+                        'quantity'     => $take,
+                        'reference_id' => $order->id,
+                        'created_by'   => $user->id,
+                        'note'         => "Xuất kho cho đơn hàng {$order->order_code}",
+                    ]);
+
+                    $remaining -= $take;
+                }
+
+                if ($remaining > 0) {
+                    throw new \Exception('Không đủ số lượng hàng hợp lệ trong kho!');
+                }
             }
 
-            // 4. Tạo record thanh toán
+            // 4. Payment (chỉ 1 lần)
             Payment::create([
                 'order_id'       => $order->id,
                 'amount'         => $finalAmount,
@@ -122,11 +164,27 @@ class OrderController extends Controller
                 'status'         => 'pending',
             ]);
 
-            return response()->json($order->load(['items.product', 'address']), 201);
+            // 5. Payment URL
+            $paymentUrl = null;
+
+            if ($validated['payment_method'] === 'vnpay') {
+                $paymentUrl = $vnpay->createPaymentUrl($order);
+            }
+
+            // 6. Response
+            return response()->json([
+                'order_id'     => $order->id,
+                'order_code'   => $order->order_code,
+                'final_amount' => $order->final_amount,
+                'payment_method' => $order->payment_method,
+                'payment_url'  => $paymentUrl,
+                'message'      => $paymentUrl
+                    ? 'Tạo đơn thành công, chuyển hướng thanh toán'
+                    : 'Đặt hàng thành công'
+            ], 201);
         });
     }
 
-    // PUT /api/orders/{id}/status (admin)
     public function updateStatus(Request $request, int $id)
     {
         $validated = $request->validate([
@@ -140,7 +198,6 @@ class OrderController extends Controller
         return response()->json($order);
     }
 
-    // GET /api/admin/orders (admin)
     public function adminIndex(Request $request)
     {
         $query = Order::with(['user', 'address', 'items.product'])->latest();

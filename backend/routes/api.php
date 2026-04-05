@@ -64,11 +64,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/batches',       [BatchController::class, 'index']);
         Route::get('/batches/{id}',  [BatchController::class, 'show']);
         Route::post('/batches',      [BatchController::class, 'store']);
+        Route::put('/batches/{id}',  [BatchController::class, 'update']);
 
         // Warehouse
         Route::get('/warehouse/alerts',              [WarehouseController::class, 'alerts']);
         Route::post('/warehouse/alerts/{id}/resolve',[WarehouseController::class, 'resolveAlert']);
         Route::post('/warehouse/check-alerts',       [WarehouseController::class, 'checkAndGenerateAlerts']);
         Route::get('/warehouse/inventory',           [WarehouseController::class, 'inventory']);
+        Route::get('/warehouse/inventory-transactions', [WarehouseController::class, 'inventoryTransactions']);
     });
 });

@@ -155,12 +155,32 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import { useCartStore } from '@/stores/cart'
 import { useAuthStore } from '@/stores/auth'
+import { useProductStore } from '@/stores/shopProducts'
 
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const productStore = useProductStore()
+
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  timeout: 15000,
+  headers: {
+    Accept: 'application/json'
+  }
+})
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
 
 const isSubmitting = ref(false)
 const orderSuccess = ref(false)
@@ -189,16 +209,60 @@ const finalAmount = computed(() => cartStore.totalAmount + shippingFee.value)
 
 const handleSubmit = async () => {
   error.value = ''
+  if (!authStore.isLoggedIn) {
+    error.value = 'Vui lòng đăng nhập để đặt hàng.'
+    router.push('/login')
+    return
+  }
+
+  if (!cartStore.items.length) {
+    error.value = 'Giỏ hàng trống, không thể đặt hàng.'
+    return
+  }
+
   if (!form.value.name || !form.value.phone || !form.value.address_line) {
     error.value = 'Vui lòng điền đầy đủ thông tin giao hàng.'
     return
   }
+
   isSubmitting.value = true
-  await new Promise(r => setTimeout(r, 1200))
-  orderId.value = `ORD-${Date.now()}`
-  orderSuccess.value = true
-  isSubmitting.value = false
-  cartStore.clearCart()
-  setTimeout(() => router.push('/account/orders'), 2500)
+  try {
+    const payload = {
+      items: cartStore.items.map((item) => ({
+        product_id: item.productId,
+        quantity: Number(item.quantity || 0)
+      })),
+      address: {
+        full_name: form.value.name,
+        phone: form.value.phone,
+        address_line: form.value.address_line,
+        ward: form.value.ward || '',
+        district: form.value.district || '',
+        city: form.value.city || ''
+      },
+      payment_method: form.value.payment_method,
+      note: form.value.note || ''
+    }
+
+    const response = await apiClient.post('/orders', payload)
+    const data = response.data || {}
+
+    orderId.value = data.order_code || String(data.order_id || '')
+    orderSuccess.value = true
+
+    cartStore.clearCart()
+    await productStore.fetchProducts()
+
+    if (data.payment_url) {
+      window.location.href = data.payment_url
+      return
+    }
+
+    setTimeout(() => router.push('/account/orders'), 1800)
+  } catch (err) {
+    error.value = err?.response?.data?.message || err?.message || 'Đặt hàng thất bại. Vui lòng thử lại.'
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>

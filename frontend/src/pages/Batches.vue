@@ -48,8 +48,8 @@
           <tr>
             <th class="col-batch">Mã lô</th>
             <th class="col-product">Sản phẩm</th>
-            <th class="col-qty">Số lượng</th>
-            <th class="col-remain">Tồn còn lại</th>
+            <th class="col-qty">Số lượng hiện tại</th>
+            <th class="col-remain">Số lượng nhập</th>
             <th class="col-expiry">Ngày hết hạn</th>
             <th class="col-days">Còn lại</th>
             <th class="col-status">Trạng thái</th>
@@ -73,10 +73,10 @@
               </div>
             </td>
             <td class="col-qty">
-              <span class="qty-badge">{{ batch.quantity }}</span>
+              <span class="qty-badge remaining">{{ batch.remaining_quantity }}</span>
             </td>
             <td class="col-remain">
-              <span class="qty-badge remaining">{{ batch.remaining_quantity }}</span>
+              <span class="qty-badge">{{ batch.quantity }}</span>
             </td>
             <td class="col-expiry">{{ formatDate(batch.expiry_date) }}</td>
             <td class="col-days">
@@ -259,7 +259,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message, Modal } from 'ant-design-vue'
 import { useBatchStore } from '@/stores/batches'
@@ -462,25 +462,17 @@ const closeModal = () => {
   resetForm()
 }
 
-// Giả lập gọi API để bám đúng yêu cầu async/await
-const simulateApi = async (handler) => {
-  await new Promise((resolve) => setTimeout(resolve, 250))
-  return handler()
-}
-
 const buildPayload = () => {
   const productId = Number(formState.product_id)
-  const productName = resolveProductName(productId)
   const expiryDate = dayjs(formState.expiry_date).format('YYYY-MM-DD')
-  const daysToExpiry = batchStore.getDaysToExpiry(expiryDate)
+  const product = productStore.products.find((item) => Number(item.id) === Number(productId))
 
   return {
     productId,
     product_id: productId,
-    productName,
-    product_name: productName,
+    productName: product?.name || '',
+    product_name: product?.name || '',
     batch_code: String(formState.batch_code).trim(),
-    batchNo: String(formState.batch_code).trim(),
     quantity: Number(formState.quantity),
     remaining_quantity: Number(formState.remaining_quantity),
     expiryDate,
@@ -488,14 +480,14 @@ const buildPayload = () => {
     manufactureDate: dayjs().format('YYYY-MM-DD'),
     manufacture_date: dayjs().format('YYYY-MM-DD'),
     note: formState.note,
-    status: resolveBatchStatus(daysToExpiry)
+    status: resolveBatchStatus(batchStore.getDaysToExpiry(expiryDate))
   }
 }
 
 const handleAdd = async () => {
   // Tạo lô mới và đồng bộ FEFO sau khi lưu
   const payload = buildPayload()
-  const created = await simulateApi(() => batchStore.addBatch(payload))
+  const created = await batchStore.createBatchAPI(payload)
   message.success(`Đã thêm lô ${created.batch_code} thành công`)
   closeModal()
 }
@@ -508,17 +500,12 @@ const handleEdit = async () => {
   }
 
   const expiryDate = dayjs(formState.expiry_date).format('YYYY-MM-DD')
-  const daysToExpiry = batchStore.getDaysToExpiry(expiryDate)
-
   const payload = {
-    ...existing,
-    expiryDate,
     expiry_date: expiryDate,
-    remaining_quantity: Number(formState.remaining_quantity),
-    status: resolveBatchStatus(daysToExpiry)
+    remaining_quantity: Number(formState.remaining_quantity)
   }
 
-  const updated = await simulateApi(() => batchStore.updateBatch(editingBatchId.value, payload))
+  const updated = await batchStore.updateBatchAPI(editingBatchId.value, payload)
   message.success(`Đã cập nhật lô ${updated?.batch_code || existing.batch_code} thành công`)
   closeModal()
 }
@@ -534,7 +521,7 @@ const handleDelete = async (id) => {
     okType: 'danger',
     cancelText: 'Hủy',
     async onOk() {
-      await simulateApi(() => batchStore.deleteBatch(id))
+      batchStore.deleteBatch(id)
       message.success(`Đã xóa lô ${target?.batch_code || id} thành công`)
     }
   })
@@ -574,6 +561,13 @@ const getDeleteIcon = () => `
     <path d="M14 11v4" />
   </svg>
 `
+
+onMounted(async () => {
+  await Promise.all([
+    batchStore.fetchBatches(),
+    productStore.fetchProducts({ per_page: 50 })
+  ])
+})
 </script>
 
 <style scoped>

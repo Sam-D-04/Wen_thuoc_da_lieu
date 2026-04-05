@@ -1,144 +1,38 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  timeout: 10000,
+  headers: {
+    Accept: 'application/json'
+  }
+})
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+const normalizeCustomer = (customer) => ({
+  ...customer,
+  status: customer.status === 'active' ? 'active' : 'inactive',
+  statusLabel: customer.status === 'active' ? 'Hoạt động' : 'Ngưng hoạt động',
+  totalOrders: Number(customer.orders_count ?? customer.totalOrders ?? 0),
+  totalSpent: Number(customer.total_spent ?? customer.totalSpent ?? 0),
+  type: Number(customer.total_spent ?? customer.totalSpent ?? 0) > 1000000 || Number(customer.orders_count ?? customer.totalOrders ?? 0) > 3 ? 'Thường xuyên' : 'Mới',
+  joinDate: customer.created_at || customer.joinDate,
+  created_at: customer.created_at || customer.joinDate,
+  user_addresses: Array.isArray(customer.addresses) ? customer.addresses : Array.isArray(customer.user_addresses) ? customer.user_addresses : []
+})
 
 export const useCustomerStore = defineStore('customer', () => {
-  const customers = ref([
-    {
-      id: 'CUST-001',
-      role: 'customer',
-      name: 'Nguyễn Văn A',
-      email: 'nguyenvana@email.com',
-      phone: '0901234567',
-      address: '123 Đường Nguyễn Huệ, Quận 1, TPHCM',
-      joinDate: '2024-01-15',
-      created_at: '2024-01-15',
-      totalOrders: 4,
-      totalSpent: 1086000,
-      status: 'Đang hoạt động',
-      type: 'Thường xuyên',
-      user_addresses: [
-        {
-          id: 'ADDR-001',
-          user_id: 'CUST-001',
-          recipient_name: 'Nguyễn Văn A',
-          phone: '0901234567',
-          address_line: '123 Đường Nguyễn Huệ, Quận 1, TPHCM',
-          ward: 'Bến Nghé',
-          district: 'Quận 1',
-          province: 'TPHCM',
-          is_default: 1
-        }
-      ]
-    },
-    {
-      id: 'CUST-002',
-      role: 'customer',
-      name: 'Trần Thị B',
-      email: 'tranthibhh@email.com',
-      phone: '0912345678',
-      address: '456 Đường Lê Lợi, Quận 1, TPHCM',
-      joinDate: '2024-03-20',
-      created_at: '2024-03-20',
-      totalOrders: 2,
-      totalSpent: 423000,
-      status: 'Đang hoạt động',
-      type: 'Mới',
-      user_addresses: [
-        {
-          id: 'ADDR-002',
-          user_id: 'CUST-002',
-          recipient_name: 'Trần Thị B',
-          phone: '0912345678',
-          address_line: '456 Đường Lê Lợi, Quận 1, TPHCM',
-          ward: 'Bến Thành',
-          district: 'Quận 1',
-          province: 'TPHCM',
-          is_default: 1
-        }
-      ]
-    },
-    {
-      id: 'CUST-003',
-      role: 'customer',
-      name: 'Lê Hoàng C',
-      email: 'lehoangc@email.com',
-      phone: '0923456789',
-      address: '789 Đường Hồ Tùng Mậu, Quận 1, TPHCM',
-      joinDate: '2024-05-10',
-      created_at: '2024-05-10',
-      totalOrders: 3,
-      totalSpent: 645000,
-      status: 'Đang hoạt động',
-      type: 'Thường xuyên',
-      user_addresses: [
-        {
-          id: 'ADDR-003',
-          user_id: 'CUST-003',
-          recipient_name: 'Lê Hoàng C',
-          phone: '0923456789',
-          address_line: '789 Đường Hồ Tùng Mậu, Quận 1, TPHCM',
-          ward: 'Bến Nghé',
-          district: 'Quận 1',
-          province: 'TPHCM',
-          is_default: 1
-        }
-      ]
-    },
-    {
-      id: 'CUST-004',
-      role: 'customer',
-      name: 'Phạm Thanh D',
-      email: 'phamthanhd@email.com',
-      phone: '0934567890',
-      address: '321 Đường Cộng Hòa, Quận Tân Bình, TPHCM',
-      joinDate: '2024-07-05',
-      created_at: '2024-07-05',
-      totalOrders: 1,
-      totalSpent: 178000,
-      status: 'Đang hoạt động',
-      type: 'Mới',
-      user_addresses: [
-        {
-          id: 'ADDR-004',
-          user_id: 'CUST-004',
-          recipient_name: 'Phạm Thanh D',
-          phone: '0934567890',
-          address_line: '321 Đường Cộng Hòa, Quận Tân Bình, TPHCM',
-          ward: '12',
-          district: 'Tân Bình',
-          province: 'TPHCM',
-          is_default: 1
-        }
-      ]
-    },
-    {
-      id: 'CUST-005',
-      role: 'customer',
-      name: 'Vũ Minh E',
-      email: 'vuminhe@email.com',
-      phone: '0945678901',
-      address: '654 Đường Âu Cơ, Quận 5, TPHCM',
-      joinDate: '2024-06-12',
-      created_at: '2024-06-12',
-      totalOrders: 0,
-      totalSpent: 0,
-      status: 'Không hoạt động',
-      type: 'Mới',
-      user_addresses: [
-        {
-          id: 'ADDR-005',
-          user_id: 'CUST-005',
-          recipient_name: 'Vũ Minh E',
-          phone: '0945678901',
-          address_line: '654 Đường Âu Cơ, Quận 5, TPHCM',
-          ward: '14',
-          district: 'Quận 5',
-          province: 'TPHCM',
-          is_default: 1
-        }
-      ]
-    }
-  ])
+  const customers = ref([])
 
   const totalCustomers = computed(() => customers.value.length)
 
@@ -158,10 +52,23 @@ export const useCustomerStore = defineStore('customer', () => {
     [...customers.value].sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5)
   )
 
+  const fetchCustomers = async (params = {}) => {
+    const response = await apiClient.get('/admin/users', {
+      params: {
+        role: 'customer',
+        ...params
+      }
+    })
+
+    const list = response.data?.data || []
+    customers.value = list.map(normalizeCustomer)
+    return response.data
+  }
+
   const addCustomer = (customer) => {
     const nextId = 'CUST-' + String(customers.value.length + 1).padStart(3, '0')
     const today = new Date().toISOString().split('T')[0]
-    customers.value.push({
+    const created = normalizeCustomer({
       id: nextId,
       ...customer,
       role: customer.role || 'customer',
@@ -169,11 +76,13 @@ export const useCustomerStore = defineStore('customer', () => {
       created_at: today,
       totalOrders: 0,
       totalSpent: 0,
-      status: 'Đang hoạt động',
+      status: 'active',
       type: 'Mới',
       user_addresses: customer.user_addresses || []
     })
-    return nextId
+
+    customers.value.push(created)
+    return created
   }
 
   const updateCustomer = (id, updates) => {
@@ -210,6 +119,7 @@ export const useCustomerStore = defineStore('customer', () => {
     loyalCustomers,
     totalCustomerSpent,
     topCustomers,
+    fetchCustomers,
     addCustomer,
     updateCustomer,
     updateCustomerType,

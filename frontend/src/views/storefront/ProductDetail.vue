@@ -166,7 +166,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '@/stores/shopProducts'
 import { useCartStore } from '@/stores/cart'
@@ -208,4 +208,10 @@ const handleBuyNow = () => {
   cartStore.addItem(product.value, quantity.value)
   router.push('/checkout')
 }
+
+onMounted(async () => {
+  if (!productStore.products.length) {
+    await productStore.fetchProducts()
+  }
+})
 </script>

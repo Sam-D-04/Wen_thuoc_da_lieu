@@ -14,7 +14,14 @@ class ProductController extends Controller
     // ─── GET /api/products ───────────────────────────────
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'brand'])->active();
+        $query = Product::with(['category', 'brand'])
+            ->withSum([
+                'batches as batch_remaining_quantity' => function ($q) {
+                    $q->where('remaining_quantity', '>', 0)
+                      ->whereDate('expiry_date', '>=', now()->toDateString());
+                }
+            ], 'remaining_quantity')
+            ->active();
 
         // Search by name or brand name
         if ($s = $request->get('search')) {

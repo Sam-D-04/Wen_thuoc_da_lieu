@@ -80,7 +80,10 @@ class AuthController extends Controller
     // GET /api/admin/users (admin)
     public function adminUsers(Request $request)
     {
-        $query = User::latest();
+        $query = User::with('addresses')
+            ->withCount('orders')
+            ->withSum('orders as total_spent', 'final_amount')
+            ->latest();
 
         if ($role = $request->get('role')) {
             $query->where('role', $role);

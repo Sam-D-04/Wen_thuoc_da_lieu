@@ -119,7 +119,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAlertStore } from '@/stores/alerts'
 
 const alertStore = useAlertStore()
@@ -157,8 +157,11 @@ const markAllAsRead = () => {
   alertStore.markAllAsRead()
 }
 
-const updateStatus = (id, status) => {
-  alertStore.updateAlertStatus(id, status)
+const updateStatus = async (id, status) => {
+  if (status !== 'Đã xử lý') {
+    return
+  }
+  await alertStore.resolveAlertAPI(id)
 }
 
 const deleteAlert = (id) => {
@@ -174,6 +177,10 @@ const getDeleteIcon = () => `
     <path d="M14 11v4" />
   </svg>
 `
+
+onMounted(async () => {
+  await alertStore.fetchAlerts()
+})
 </script>
 
 <style scoped>

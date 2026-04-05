@@ -151,6 +151,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import WarehouseSidebar from '@/components/warehouse/Sidebar.vue'
+import { warehouseApi } from '@/api/warehouse'
 
 const loading = ref(false)
 const processingAll = ref(false)
@@ -171,50 +172,6 @@ const pagination = reactive({
 
 const allAlerts = ref([])
 const filteredAlerts = ref([])
-
-const users = ref([
-  { id: 1, name: 'Admin' },
-  { id: 2, name: 'Warehouse' }
-])
-
-const mockAlerts = [
-  {
-    id: 2,
-    product_id: 4,
-    alert_type: 'expiring_soon',
-    product_name: 'Atoderm Intensive Baume',
-    message: 'Lô BIOA-2407-A sắp hết hạn trong 2 ngày',
-    is_resolved: false,
-    resolved_by: null,
-    resolved_at: null,
-    created_at: '2026-03-28 10:30',
-    created_by_name: 'Hệ thống'
-  },
-  {
-    id: 1,
-    product_id: 2,
-    alert_type: 'low_stock',
-    product_name: 'Cicavit+ Creme',
-    message: 'Cicavit+ Creme tồn kho thấp hơn ngưỡng đặt lại (còn 5, ngưỡng 10)',
-    is_resolved: false,
-    resolved_by: null,
-    resolved_at: null,
-    created_at: '2026-03-25 14:20',
-    created_by_name: 'Hệ thống'
-  },
-  {
-    id: 3,
-    product_id: 2,
-    alert_type: 'expired',
-    product_name: 'Cicavit+ Creme',
-    message: 'Lô SVRC-2411-A đã hết hạn từ ngày 01/04/2026',
-    is_resolved: false,
-    resolved_by: null,
-    resolved_at: null,
-    created_at: '2026-04-02 08:15',
-    created_by_name: 'Hệ thống'
-  }
-]
 
 const totalItems = computed(() => filteredAlerts.value.length)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / pagination.pageSize)))
@@ -271,8 +228,19 @@ const fetchAlerts = async () => {
   loading.value = true
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 420))
-    allAlerts.value = mockAlerts.map((item) => ({ ...item }))
+    const result = await warehouseApi.getAlerts({
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      type: filters.type,
+      status: filters.status
+    })
+
+    allAlerts.value = (result.data || []).map((item) => ({
+      ...item,
+      is_resolved: Boolean(item.is_resolved),
+      product_name: item.product_name || item.product?.name || 'N/A'
+    }))
+
     filterAlerts()
   } finally {
     loading.value = false
@@ -320,22 +288,10 @@ const resolveAlert = async (id) => {
   resolvingIds.value = set
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    const actor = users.value[0]?.name || 'Hệ thống'
-    const now = new Date()
-    const nowText = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-    allAlerts.value = allAlerts.value.map((item) => {
-      if (item.id !== id) return item
-      return {
-        ...item,
-        is_resolved: true,
-        resolved_by: 1,
-        resolved_by_name: actor,
-        resolved_at: nowText
-      }
-    })
+    await warehouseApi.resolveAlert(id)
+    allAlerts.value = allAlerts.value.map((item) =>
+      item.id === id ? { ...item, is_resolved: true, resolved_at: new Date().toISOString() } : item
+    )
 
     filterAlerts()
   } finally {
@@ -353,22 +309,11 @@ const resolveAllAlerts = async () => {
 
   processingAll.value = true
   try {
-    await new Promise((resolve) => setTimeout(resolve, 380))
-
-    const actor = users.value[0]?.name || 'Hệ thống'
-    const now = new Date()
-    const nowText = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
-    allAlerts.value = allAlerts.value.map((item) => {
-      if (item.is_resolved) return item
-      return {
-        ...item,
-        is_resolved: true,
-        resolved_by: 1,
-        resolved_by_name: actor,
-        resolved_at: nowText
-      }
-    })
+    const unresolvedIds = allAlerts.value.filter((item) => !item.is_resolved).map((item) => item.id)
+    await Promise.all(unresolvedIds.map((id) => warehouseApi.resolveAlert(id)))
+    allAlerts.value = allAlerts.value.map((item) =>
+      item.is_resolved ? item : { ...item, is_resolved: true, resolved_at: new Date().toISOString() }
+    )
 
     filterAlerts()
   } finally {

@@ -64,4 +64,19 @@ class BatchController extends Controller
     {
         return response()->json(Batch::with('product')->findOrFail($id));
     }
+
+    // PUT /api/batches/{id}
+    public function update(Request $request, int $id)
+    {
+        $batch = Batch::findOrFail($id);
+
+        $validated = $request->validate([
+            'expiry_date'       => 'sometimes|date|after:today',
+            'remaining_quantity'=> "sometimes|integer|min:0|max:{$batch->quantity}",
+        ]);
+
+        $batch->update($validated);
+
+        return response()->json($batch->load('product'));
+    }
 }

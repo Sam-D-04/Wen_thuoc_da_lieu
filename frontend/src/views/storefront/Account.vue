@@ -140,8 +140,6 @@ const handleLogout = () => {
 }
 
 onMounted(() => {
-  // In real app: fetch orders for current user from API
-  // For demo: show mock orders
   const user = authStore.user
   if (user) {
     orders.value = orderStore.orders.filter(o => o.customerId === `CUST-00${user.id}` || o.customerEmail === user.email)

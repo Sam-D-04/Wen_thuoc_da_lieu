@@ -1,3 +1,4 @@
+
 <template>
   <div class="orders-page">
     <div class="page-header">
@@ -341,7 +342,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { Modal, message } from 'ant-design-vue'
 import { useOrderStore } from '@/stores/orders'
@@ -665,41 +666,50 @@ const validateCreateOrder = () => {
   return ''
 }
 
+
+
 const submitCreateOrder = async () => {
   try {
     await createFormRef.value?.validate()
-    const validationError = validateCreateOrder()
-    if (validationError) {
-      createError.value = validationError
-      return
+
+    const customer = selectedCustomer.value
+    const address = (customer?.user_addresses || []).find(
+      (item) => item.id === createForm.addressId
+    )
+
+    const payload = {
+      items: createForm.items.map((line) => ({
+        product_id: line.productId,
+        quantity: Number(line.quantity)
+      })),
+      address: {
+        full_name: customer.name,
+        phone: customer.phone,
+        address_line: address.address_line,
+        ward: address.ward,
+        district: address.district,
+        city: address.city
+      },
+      payment_method: createForm.paymentMethod,
+      note: createForm.note
     }
 
     creating.value = true
     createError.value = ''
 
-    const customer = selectedCustomer.value
-    const address = (customer?.user_addresses || []).find((item) => item.id === createForm.addressId)
+    // 🔥 GỌI STORE (KHÔNG GỌI AXIOS TRỰC TIẾP)
+    const res = await orderStore.createOrderAPI(payload)
 
-    orderStore.addOrder({
-      customerId: customer.id,
-      customer,
-      address: address ? formatAddress(address) : customer.address,
-      items: createForm.items.map((line) => ({
-        productId: line.productId,
-        batchId: line.batchId,
-        quantity: Number(line.quantity || 0),
-        unit_price: lineUnitPrice(line.productId)
-      })),
-      paymentMethod: createForm.paymentMethod,
-      shippingFee: Number(createForm.shippingFee || 0),
-      note: createForm.note
-    })
+    // 🔥 REDIRECT THANH TOÁN
+    if (res.payment_url) {
+      window.location.href = res.payment_url
+    } else {
+      message.success('Đặt hàng thành công')
+      closeCreateModal()
+    }
 
-    message.success('Đã tạo đơn hàng mới')
-    closeCreateModal()
   } catch (error) {
-    if (error?.errorFields) return
-    createError.value = error?.message || 'Không thể tạo đơn hàng'
+    createError.value = error?.message || 'Lỗi tạo đơn'
   } finally {
     creating.value = false
   }
@@ -716,15 +726,11 @@ const submitDetailOrder = async () => {
     savingDetail.value = true
     detailError.value = ''
 
-    if (detailForm.order_status === 'cancelled') {
-      orderStore.cancelOrder(currentOrder.id, detailForm.note)
-    } else {
-      orderStore.updateOrderStatus(currentOrder.id, detailForm.order_status)
-      orderStore.updateOrder(currentOrder.id, {
-        note: detailForm.note,
-        order_status: detailForm.order_status
-      })
-    }
+    await orderStore.updateOrderStatusAPI(currentOrder.id, detailForm.order_status)
+    orderStore.updateOrder(currentOrder.id, {
+      note: detailForm.note,
+      order_status: detailForm.order_status
+    })
 
     message.success('Đã cập nhật đơn hàng')
     closeDetailModal()
@@ -743,8 +749,12 @@ const confirmCancel = (order) => {
     okText: 'Hủy đơn',
     okType: 'danger',
     cancelText: 'Không',
-    onOk() {
-      orderStore.cancelOrder(order.id, 'Hủy từ giao diện quản lý.')
+    async onOk() {
+      await orderStore.updateOrderStatusAPI(order.id, 'cancelled')
+      orderStore.updateOrder(order.id, {
+        note: 'Hủy từ giao diện quản lý.',
+        order_status: 'cancelled'
+      })
       message.success(`Đã hủy đơn ${order.id}`)
       if (selectedOrderId.value === order.id) {
         detailVisible.value = false
@@ -756,17 +766,11 @@ const confirmCancel = (order) => {
 const confirmDelete = (order) => {
   Modal.confirm({
     title: 'Xác nhận xóa đơn',
-    content: `Bạn có chắc muốn xóa đơn ${order.id} không?`,
-    okText: 'Xóa',
-    okType: 'danger',
+    content: `API hiện chưa hỗ trợ xóa đơn ${order.id}. Bạn chỉ có thể hủy đơn.`,
+    okText: 'Đã hiểu',
+    okType: 'default',
     cancelText: 'Không',
-    onOk() {
-      orderStore.deleteOrder(order.id)
-      message.success(`Đã xóa đơn ${order.id}`)
-      if (selectedOrderId.value === order.id) {
-        detailVisible.value = false
-      }
-    }
+    onOk() {}
   })
 }
 
@@ -797,6 +801,15 @@ watch(
   },
   { deep: true }
 )
+
+onMounted(async () => {
+  await Promise.all([
+    customerStore.fetchCustomers(),
+    productStore.fetchProducts({ per_page: 50 }),
+    batchStore.fetchBatches(),
+    orderStore.fetchAdminOrders()
+  ])
+})
 </script>
 
 <style scoped>

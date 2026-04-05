@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\WarehouseAlert;
 use App\Models\Product;
 use App\Models\Batch;
+use App\Models\InventoryTransaction;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -87,5 +88,53 @@ class WarehouseController extends Controller
         }
 
         return response()->json($query->paginate(20));
+    }
+
+    // GET /api/warehouse/inventory-transactions — lịch sử nhập/xuất kho
+    public function inventoryTransactions(Request $request)
+    {
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'type' => 'nullable|in:import,export,adjustment',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        $query = InventoryTransaction::with([
+            'product:id,name',
+            'batch:id,batch_code,expiry_date',
+            'createdBy:id,name',
+        ])->latest('created_at');
+
+        if (!empty($validated['type'])) {
+            $query->where('type', $validated['type']);
+        }
+
+        if (!empty($validated['from_date'])) {
+            $query->whereDate('created_at', '>=', Carbon::parse($validated['from_date'])->toDateString());
+        }
+
+        if (!empty($validated['to_date'])) {
+            $query->whereDate('created_at', '<=', Carbon::parse($validated['to_date'])->toDateString());
+        }
+
+        if (!empty($validated['search'])) {
+            $search = trim((string) $validated['search']);
+            $query->where(function ($q) use ($search) {
+                $q->where('note', 'like', "%{$search}%")
+                    ->orWhere('reference_id', 'like', "%{$search}%")
+                    ->orWhereHas('product', function ($p) use ($search) {
+                        $p->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('batch', function ($b) use ($search) {
+                        $b->where('batch_code', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $perPage = (int) ($validated['per_page'] ?? 20);
+
+        return response()->json($query->paginate($perPage));
     }
 }

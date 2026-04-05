@@ -21,17 +21,17 @@
     <div class="summary-grid">
       <div class="summary-card">
         <p class="label">Doanh thu toàn kỳ</p>
-        <p class="value">25,890,000₫</p>
+        <p class="value">{{ formatVnd(totalRevenue) }}</p>
         <p class="change positive">↑ 24% so với {{ previousPeriodLabel }}</p>
       </div>
       <div class="summary-card">
         <p class="label">Tổng đơn hàng</p>
-        <p class="value">487</p>
+        <p class="value">{{ totalOrders }}</p>
         <p class="change positive">↑ 18% so với {{ previousPeriodLabel }}</p>
       </div>
       <div class="summary-card">
         <p class="label">Giá trị đơn hàng trung bình</p>
-        <p class="value">53,180₫</p>
+        <p class="value">{{ formatVnd(averageOrderValue) }}</p>
         <p class="change positive">↑ 5% so với {{ previousPeriodLabel }}</p>
       </div>
       <div class="summary-card">
@@ -70,25 +70,12 @@
         </div>
         <table class="simple-table">
           <tbody>
-            <tr>
-              <td>Gel rửa mặt trị mụn BHA 2%</td>
-              <td class="text-right">9,828,000₫</td>
+            <tr v-if="topProducts.length === 0">
+              <td colspan="2" class="text-right">Chưa có dữ liệu</td>
             </tr>
-            <tr>
-              <td>Kem phục hồi hàng rào da Ceramide</td>
-              <td class="text-right">9,010,000₫</td>
-            </tr>
-            <tr>
-              <td>Serum giảm thâm mụn Niacinamide 10%</td>
-              <td class="text-right">5,760,000₫</td>
-            </tr>
-            <tr>
-              <td>Kem chống nắng da nhạy cảm SPF50+ PA++++</td>
-              <td class="text-right">3,874,000₫</td>
-            </tr>
-            <tr>
-              <td>Kem chấm mụn Benzoyl Peroxide 2.5%</td>
-              <td class="text-right">2,175,000₫</td>
+            <tr v-for="item in topProducts" :key="item.name">
+              <td>{{ item.name }}</td>
+              <td class="text-right">{{ formatVnd(item.revenue) }}</td>
             </tr>
           </tbody>
         </table>
@@ -101,19 +88,19 @@
       <div class="mini-report">
         <div class="report-item">
           <p class="label">Sản phẩm có tồn kho cao</p>
-          <p class="value">12 sản phẩm</p>
+          <p class="value">0 sản phẩm</p>
         </div>
         <div class="report-item">
           <p class="label">Sản phẩm hạn chế tồn kho</p>
-          <p class="value">5 sản phẩm</p>
+          <p class="value">0 sản phẩm</p>
         </div>
         <div class="report-item">
           <p class="label">Sản phẩm sắp hết hạn</p>
-          <p class="value">8 lô</p>
+          <p class="value">0 lô</p>
         </div>
         <div class="report-item">
           <p class="label">Giá trị tồn kho</p>
-          <p class="value">45,600,000₫</p>
+          <p class="value">{{ formatVnd(0) }}</p>
         </div>
       </div>
     </div>
@@ -125,38 +112,49 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import Chart from 'chart.js/auto'
 import { Bar } from 'vue-chartjs'
+import { useOrderStore } from '@/stores/orders'
 
 const selectedPeriod = ref('7days')
 const categoryChart = ref(null)
+const orderStore = useOrderStore()
 
 const vndFormatter = new Intl.NumberFormat('vi-VN', {
   maximumFractionDigits: 0
 })
+const formatVnd = (value) => `${vndFormatter.format(Number(value || 0))}₫`
 
-// Tạo ngẫu nhiên số nguyên trong khoảng [min, max].
-const randomInt = (min, max) => {
-  return Math.floor(Math.random() * (max - min + 1)) + min
-}
+const paidOrders = computed(() =>
+  orderStore.orders.filter((order) => String(order.payment_status || '').toLowerCase() === 'paid')
+)
 
-// Tạo đúng 30 bản ghi giả lập theo cấu trúc orders.
-// Mỗi bản ghi ứng với 1 ngày trong 30 ngày gần nhất để biểu đồ luôn đủ cột.
-const generateMockOrders = () => {
-  const startDate = dayjs().subtract(29, 'day')
+const totalOrders = computed(() => orderStore.orders.length)
 
-  return Array.from({ length: 30 }, (_, index) => {
-    const currentDate = startDate.add(index, 'day')
+const totalRevenue = computed(() =>
+  paidOrders.value.reduce((sum, order) => sum + Number(order.final_amount || 0), 0)
+)
 
-    return {
-      id: index + 1,
-      order_code: `ORD-${String(index + 1).padStart(3, '0')}`,
-      final_amount: randomInt(1000000, 5000000),
-      payment_status: Math.random() < 0.85 ? 'paid' : 'unpaid',
-      order_date: currentDate.format('YYYY-MM-DD')
-    }
+const averageOrderValue = computed(() => {
+  if (!totalOrders.value) return 0
+  return Math.round(totalRevenue.value / totalOrders.value)
+})
+
+const topProducts = computed(() => {
+  const revenueMap = new Map()
+
+  orderStore.orders.forEach((order) => {
+    ;(order.items || []).forEach((item) => {
+      const key = item.product_name || item.productName || `#${item.product_id || item.productId || 'NA'}`
+      const current = revenueMap.get(key) || 0
+      const amount = Number(item.subtotal || Number(item.unit_price || 0) * Number(item.quantity || 0))
+      revenueMap.set(key, current + amount)
+    })
   })
-}
 
-const mockOrders = ref(generateMockOrders())
+  return [...revenueMap.entries()]
+    .map(([name, revenue]) => ({ name, revenue }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10)
+})
 
 // Xử lý dữ liệu cho biểu đồ:
 // 1) Tạo trục thời gian 30 ngày liên tục
@@ -181,7 +179,7 @@ const processChartData = (orders) => {
   return { labels, values, fullDates }
 }
 
-const revenueChartResult = computed(() => processChartData(mockOrders.value))
+const revenueChartResult = computed(() => processChartData(orderStore.orders))
 
 const revenueChartData = computed(() => {
   return {

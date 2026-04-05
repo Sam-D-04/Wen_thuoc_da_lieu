@@ -1,27 +1,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { defineAsyncComponent } from 'vue'
 import warehouseRoutes from './warehouse'
-
-// ─── Layouts ───────────────────────────────────────────
-const AdminLayout = defineAsyncComponent(() => import('@/layouts/AdminLayout.vue'))
-const StorefrontLayout = defineAsyncComponent(() => import('@/layouts/StorefrontLayout.vue'))
-
-// ─── Admin Pages ────────────────────────────────────────
-const Dashboard = defineAsyncComponent(() => import('@/pages/Dashboard.vue'))
-const Products = defineAsyncComponent(() => import('@/pages/Products.vue'))
-const Batches = defineAsyncComponent(() => import('@/pages/Batches.vue'))
-const Orders = defineAsyncComponent(() => import('@/pages/Orders.vue'))
-const Customers = defineAsyncComponent(() => import('@/pages/Customers.vue'))
-const Alerts = defineAsyncComponent(() => import('@/pages/Alerts.vue'))
-const Reports = defineAsyncComponent(() => import('@/pages/Reports.vue'))
-const Settings = defineAsyncComponent(() => import('@/pages/Settings.vue'))
-
-// ─── Storefront Pages ───────────────────────────────────
-const LoginRegister = defineAsyncComponent(() => import('@/views/auth/LoginRegister.vue'))
-const Home = defineAsyncComponent(() => import('@/views/storefront/Home.vue'))
-const ProductDetail = defineAsyncComponent(() => import('@/views/storefront/ProductDetail.vue'))
-const Checkout = defineAsyncComponent(() => import('@/views/storefront/Checkout.vue'))
-const Account = defineAsyncComponent(() => import('@/views/storefront/Account.vue'))
+import AdminLayout from '@/layouts/AdminLayout.vue'
+import StorefrontLayout from '@/layouts/StorefrontLayout.vue'
+import Dashboard from '@/pages/Dashboard.vue'
+import Products from '@/pages/Products.vue'
+import Category from '@/pages/Category.vue'
+import Brand from '@/pages/Brand.vue'
+import Batches from '@/pages/Batches.vue'
+import Orders from '@/pages/Orders.vue'
+import Customers from '@/pages/Customers.vue'
+import Alerts from '@/pages/Alerts.vue'
+import Reports from '@/pages/Reports.vue'
+import Settings from '@/pages/Settings.vue'
+import LoginRegister from '@/views/auth/LoginRegister.vue'
+import Home from '@/views/storefront/Home.vue'
+import ProductDetail from '@/views/storefront/ProductDetail.vue'
+import Checkout from '@/views/storefront/Checkout.vue'
+import Account from '@/views/storefront/Account.vue'
 
 const routes = [
   // ─── Auth ─────────────────────────────────────────────
@@ -73,6 +68,8 @@ const routes = [
       { path: '', redirect: '/admin/dashboard' },
       { path: 'dashboard', name: 'Dashboard', component: Dashboard, meta: { title: 'Tổng quan' } },
       { path: 'products', name: 'Products', component: Products, meta: { title: 'Sản phẩm' } },
+      { path: 'categories', name: 'Categories', component: Category, meta: { title: 'Danh mục' } },
+      { path: 'brands', name: 'Brands', component: Brand, meta: { title: 'Thương hiệu' } },
       { path: 'batches', name: 'Batches', component: Batches, meta: { title: 'Lô thuốc' } },
       { path: 'orders', name: 'Orders', component: Orders, meta: { title: 'Đơn hàng' } },
       { path: 'customers', name: 'Customers', component: Customers, meta: { title: 'Khách hàng' } },
@@ -84,6 +81,18 @@ const routes = [
 
   // ─── Warehouse ────────────────────────────────────────
   ...warehouseRoutes,
+
+  // ─── Legacy Admin Paths ───────────────────────────────
+  { path: '/dashboard', redirect: '/admin/dashboard' },
+  { path: '/products', redirect: '/admin/products' },
+  { path: '/categories', redirect: '/admin/categories' },
+  { path: '/brands', redirect: '/admin/brands' },
+  { path: '/batches', redirect: '/admin/batches' },
+  { path: '/orders', redirect: '/admin/orders' },
+  { path: '/customers', redirect: '/admin/customers' },
+  { path: '/alerts', redirect: '/admin/alerts' },
+  { path: '/reports', redirect: '/admin/reports' },
+  { path: '/settings', redirect: '/admin/settings' },
 
   // ─── Redirect root ────────────────────────────────────
   { path: '/', redirect: '/shop' },
@@ -103,7 +112,14 @@ const router = createRouter({
 
 // ─── Navigation Guard ─────────────────────────────────
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem('auth_user') || 'null')
+  let user = null
+
+  try {
+    user = JSON.parse(localStorage.getItem('auth_user') || 'null')
+  } catch (error) {
+    localStorage.removeItem('auth_user')
+    user = null
+  }
 
   // Update document title
   if (to.meta.title) document.title = to.meta.title + ' | DượcMỹPhẩm'
