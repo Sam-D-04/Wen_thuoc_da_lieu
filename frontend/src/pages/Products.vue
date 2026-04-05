@@ -91,8 +91,9 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useProductStore } from '@/stores/products'
+import { warehouseApi } from '@/api/warehouse'
 import ProductFormModal from '@/components/ProductFormModal.vue'
 
 const productStore = useProductStore()
@@ -125,7 +126,7 @@ const getStatusClass = (status) => {
 }
 
 const resolveImage = (product) => {
-  return product.image_url || product.image || 'https://via.placeholder.com/44x44?text=SP'
+  return product.image_url || product.image || '/product-placeholder.svg'
 }
 
 const resolveSlug = (product) => {
@@ -166,35 +167,37 @@ const startEdit = (product) => {
   showProductForm.value = true
 }
 
-const handleFormSaved = (saved) => {
+const handleFormSaved = async (saved) => {
   if (!saved) {
     editingProduct.value = null
     showProductForm.value = false
     return
   }
 
-  const mapped = {
+  const payload = {
+    category_id: saved.category_id,
+    brand_id: saved.brand_id || null,
     name: saved.name,
-    slug: saved.slug,
-    type: saved.dosage_form || 'Sản phẩm',
-    category: saved.category_name || categoryNameMap[String(saved.category_id)] || 'N/A',
-    category_id: saved.category_id || '',
+    description: saved.description || '',
+    price_listed: Number(saved.price_listed || 0),
     dosage_form: saved.dosage_form || '',
     volume: saved.volume || '',
-    image_url: saved.image_url || '',
-    price: Number(saved.price_listed || 0),
-    stock: Number(saved.stock_quantity || 0),
-    status: saved.is_active ? 'Hoạt động' : 'Ngừng'
+    is_active: Boolean(saved.is_active)
   }
 
-  if (saved.id && products.value.some((item) => Number(item.id) === Number(saved.id))) {
-    productStore.updateProduct(Number(saved.id), mapped)
-  } else {
-    productStore.addProduct(mapped)
-  }
+  try {
+    if (saved.id) {
+      await warehouseApi.updateProduct(saved.id, payload)
+    } else {
+      await warehouseApi.createProduct(payload)
+    }
 
-  editingProduct.value = null
-  showProductForm.value = false
+    await productStore.fetchProducts({ per_page: 50 })
+    editingProduct.value = null
+    showProductForm.value = false
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 const handleFormCancelled = () => {
@@ -225,6 +228,10 @@ const getFilterIcon = () => `
     <path d="M16 16l4 4" />
   </svg>
 `
+
+onMounted(async () => {
+  await productStore.fetchProducts({ per_page: 50 })
+})
 </script>
 
 <style scoped>

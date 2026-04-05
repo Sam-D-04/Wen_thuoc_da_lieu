@@ -77,7 +77,7 @@
           <!-- Admin Profile Dropdown -->
           <div class="profile-dropdown">
             <button @click="toggleProfileDropdown" class="profile-btn">
-              <img src="https://via.placeholder.com/32" alt="Admin" class="avatar">
+              <img src="/avatar-placeholder.svg" alt="Admin" class="avatar">
               <span class="admin-name">Admin</span>
               <span class="dropdown-arrow">▼</span>
             </button>
@@ -91,14 +91,18 @@
 
       <!-- Page Content -->
       <main class="page-content">
-        <router-view />
+        <div v-if="pageRenderError" class="page-error">
+          <p>Không thể hiển thị nội dung trang quản trị.</p>
+          <small>{{ pageRenderError }}</small>
+        </div>
+        <router-view v-else />
       </main>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onErrorCaptured } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlertStore } from '@/stores/alerts'
 
@@ -108,6 +112,12 @@ const alertStore = useAlertStore()
 
 const sidebarCollapsed = ref(false)
 const profileDropdownOpen = ref(false)
+const pageRenderError = ref('')
+
+onErrorCaptured((error) => {
+  pageRenderError.value = error instanceof Error ? error.message : String(error)
+  return false
+})
 
 const navItems = [
   { path: '/admin/dashboard', label: 'Tổng quan', icon: 'dashboard' },
@@ -749,6 +759,36 @@ const getNavIcon = (key) => navIconMap[key] || navIconMap.dashboard
   overflow-x: auto;
   min-width: 0;
   padding: 24px;
+}
+
+.page-error {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px dashed #c5d6ef;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #355984;
+}
+
+.page-error {
+  border-color: #f2c6c6;
+  color: #8a2f2f;
+}
+
+.page-error p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.page-error small {
+  margin: 0;
+  max-width: 720px;
+  text-align: center;
+  word-break: break-word;
 }
 
 /* Scrollbar Styling */

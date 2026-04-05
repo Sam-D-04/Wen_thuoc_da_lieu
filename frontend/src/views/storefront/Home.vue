@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '@/stores/shopProducts'
 import { useCartStore } from '@/stores/cart'
@@ -210,4 +210,10 @@ const handleAddToCart = (product) => {
 const handleViewProduct = (product) => {
   router.push(`/shop/product/${product.slug}`)
 }
+
+onMounted(async () => {
+  if (!productStore.products.length) {
+    await productStore.fetchProducts()
+  }
+})
 </script>

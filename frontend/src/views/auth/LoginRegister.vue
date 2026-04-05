@@ -136,21 +136,6 @@
             <span>{{ isLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}</span>
           </button>
 
-          <!-- Demo accounts -->
-          <div class="border-t border-gray-100 pt-4">
-            <p class="text-xs text-gray-400 text-center mb-2">Demo accounts:</p>
-            <div class="grid grid-cols-3 gap-2">
-              <button
-                v-for="demo in demoAccounts"
-                :key="demo.role"
-                type="button"
-                @click="fillDemo(demo)"
-                class="text-xs py-1.5 px-2 rounded-lg border border-gray-200 text-gray-600 hover:border-primary hover:text-primary hover:bg-blue-50 transition-colors"
-              >
-                {{ demo.label }}
-              </button>
-            </div>
-          </div>
         </form>
 
         <!-- REGISTER FORM -->
@@ -280,17 +265,6 @@ const registerError = ref('')
 const loginForm = reactive({ email: '', password: '', remember: false })
 const registerForm = reactive({ name: '', email: '', phone: '', password: '', confirmPassword: '', agreeTerms: false })
 
-const demoAccounts = [
-  { role: 'admin', label: 'Admin', email: 'admin@test.com', password: 'password' },
-  { role: 'warehouse', label: 'Kho', email: 'warehouse@test.com', password: 'password' },
-  { role: 'customer', label: 'Khách', email: 'customer@test.com', password: 'password' }
-]
-
-const fillDemo = (demo) => {
-  loginForm.email = demo.email
-  loginForm.password = demo.password
-}
-
 const handleLogin = async () => {
   loginError.value = ''
   isLoading.value = true
@@ -298,7 +272,7 @@ const handleLogin = async () => {
     const result = await authStore.login(loginForm.email, loginForm.password)
     if (result.success) {
       const role = result.user?.role
-      if (role === 'admin') router.push('/dashboard')
+      if (role === 'admin') router.push('/admin/dashboard')
       else if (role === 'warehouse') router.push('/warehouse')
       else router.push('/shop')
     } else {

@@ -150,6 +150,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import WarehouseSidebar from '@/components/warehouse/Sidebar.vue'
+import { warehouseApi } from '@/api/warehouse'
 
 const loading = ref(false)
 
@@ -173,71 +174,6 @@ const stats = reactive({
   currentStock: 0,
   todayTransactions: 0
 })
-
-const products = ref([
-  { id: 1, name: 'Effaclar Duo+M', stock_quantity: 42 },
-  { id: 2, name: 'Cicavit+ Creme', stock_quantity: 10 },
-  { id: 3, name: 'Cleanance SPF50+', stock_quantity: 28 },
-  { id: 4, name: 'Atoderm Intensive Baume', stock_quantity: 44 }
-])
-
-const batches = ref([
-  { id: 1, batch_code: 'LREF-2409-A', expiry_date: '2026-09-10' },
-  { id: 2, batch_code: 'SVRC-2411-A', expiry_date: '2026-11-20' },
-  { id: 3, batch_code: 'BIOA-2407-A', expiry_date: '2026-04-15' }
-])
-
-const users = ref([
-  { id: 1, name: 'Admin' },
-  { id: 2, name: 'Warehouse' }
-])
-
-const mockTransactions = [
-  {
-    id: 1,
-    product_id: 4,
-    batch_id: 3,
-    type: 'adjustment',
-    quantity: -2,
-    reference_id: 'ADJ-301',
-    note: 'Vỡ bao bì',
-    created_by: 1,
-    created_at: '2026-04-01 21:00'
-  },
-  {
-    id: 2,
-    product_id: 2,
-    batch_id: 2,
-    type: 'export',
-    quantity: -30,
-    reference_id: 'SO-2030',
-    note: 'Xuất nhà thuốc',
-    created_by: 2,
-    created_at: '2026-03-28 16:22'
-  },
-  {
-    id: 3,
-    product_id: 1,
-    batch_id: 1,
-    type: 'export',
-    quantity: -20,
-    reference_id: 'SO-2001',
-    note: 'Xuất bán lẻ',
-    created_by: 1,
-    created_at: '2026-03-05 17:02'
-  },
-  {
-    id: 4,
-    product_id: 1,
-    batch_id: 1,
-    type: 'import',
-    quantity: 60,
-    reference_id: 'IMP-1001',
-    note: 'Nhập kho đầu kỳ',
-    created_by: 1,
-    created_at: '2026-01-03 15:15'
-  }
-]
 
 const allTransactions = ref([])
 const filteredTransactions = ref([])
@@ -319,20 +255,24 @@ const fetchTransactions = async () => {
   loading.value = true
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 450))
+    const result = await warehouseApi.getInventoryTransactions({
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      search: filters.search
+    })
 
-    const productMap = new Map(products.value.map((p) => [p.id, p]))
-    const batchMap = new Map(batches.value.map((b) => [b.id, b]))
-    const userMap = new Map(users.value.map((u) => [u.id, u]))
-
-    allTransactions.value = mockTransactions
-      .map((item) => ({
-        ...item,
-        product_name: productMap.get(item.product_id)?.name || 'N/A',
-        batch_code: batchMap.get(item.batch_id)?.batch_code || 'N/A',
-        expiry_date: batchMap.get(item.batch_id)?.expiry_date || null,
-        created_by_name: userMap.get(item.created_by)?.name || 'N/A'
-      }))
+    allTransactions.value = (result.data || []).map((item) => ({
+      id: item.id,
+      type: 'inventory',
+      quantity: Number(item.stock_quantity || 0),
+      reference_id: '-',
+      note: item.description || '',
+      created_at: item.updated_at || item.created_at || new Date().toISOString(),
+      product_name: item.name || 'N/A',
+      batch_code: '-',
+      expiry_date: null,
+      created_by_name: '-'
+    }))
       .sort((a, b) => parseDate(b.created_at) - parseDate(a.created_at))
 
     filteredTransactions.value = [...allTransactions.value]
@@ -342,12 +282,10 @@ const fetchTransactions = async () => {
 }
 
 const fetchStats = async () => {
-  await new Promise((resolve) => setTimeout(resolve, 180))
-
-  stats.totalImport = 60
-  stats.totalExport = -50
-  stats.currentStock = products.value.reduce((sum, p) => sum + Number(p.stock_quantity || 0), 0)
-  stats.todayTransactions = 2
+  stats.totalImport = 0
+  stats.totalExport = 0
+  stats.currentStock = allTransactions.value.reduce((sum, item) => sum + Number(item.quantity || 0), 0)
+  stats.todayTransactions = allTransactions.value.length
 }
 
 const filterTransactions = () => {

@@ -209,7 +209,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
 import { useCustomerStore } from '@/stores/customers'
 import { useOrderStore } from '@/stores/orders'
@@ -285,7 +285,7 @@ const formatDate = (dateString) => {
 }
 
 const formatAddress = (address) => {
-  const parts = [address.address_line, address.ward, address.district, address.province].filter(Boolean)
+  const parts = [address.address_line, address.ward, address.district, address.city || address.province].filter(Boolean)
   return parts.join(', ')
 }
 
@@ -436,6 +436,13 @@ watch(createVisible, (visible) => {
   if (!visible && createMode.value === 'create') {
     resetCustomerForm()
   }
+})
+
+onMounted(async () => {
+  await Promise.all([
+    customerStore.fetchCustomers(),
+    orderStore.fetchAdminOrders()
+  ])
 })
 </script>
 

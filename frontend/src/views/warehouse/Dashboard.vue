@@ -163,6 +163,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import WarehouseSidebar from '@/components/warehouse/Sidebar.vue'
+import { warehouseApi } from '@/api/warehouse'
 
 const loading = ref(false)
 const error = ref('')
@@ -179,94 +180,17 @@ const todayDisplay = computed(() => {
 })
 
 const dashboardStats = reactive({
-  products: 4,
-  batches: 1,
-  inventoryValue: 18210000,
-  alerts: 3,
-  totalBatches: 1,
-  expiringSoon: 2
+  products: 0,
+  batches: 0,
+  inventoryValue: 0,
+  alerts: 0,
+  totalBatches: 0,
+  expiringSoon: 0
 })
 
-const alerts = ref([
-  {
-    id: 1,
-    theme: 'warning',
-    title: 'Atoderm Intensive Baume',
-    message: 'Lô BIOA-2407-A sắp hết hạn trong 2 ngày',
-    tag: 'SẮP HẾT HẠN',
-    tagClass: 'yellow',
-    icon: `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 4.5 4.7 18h14.6L12 4.5Z" />
-        <path d="M12 9v4" />
-        <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    `
-  },
-  {
-    id: 2,
-    theme: 'orange',
-    title: 'Cicavit+ Creme',
-    message: 'Tồn kho thấp hơn ngưỡng đặt lại',
-    tag: 'TỒN KHO THẤP',
-    tagClass: 'orange',
-    icon: `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 4.5 4.7 18h14.6L12 4.5Z" />
-        <path d="M12 9v4" />
-        <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    `
-  },
-  {
-    id: 3,
-    theme: 'danger',
-    title: 'Cicavit+ Creme',
-    message: 'Lô SVRC-2411-A đã hết hạn',
-    tag: 'HẾT HẠN',
-    tagClass: 'red',
-    icon: `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M12 4.5 4.7 18h14.6L12 4.5Z" />
-        <path d="M12 9v4" />
-        <circle cx="12" cy="16.4" r="1" fill="currentColor" stroke="none" />
-      </svg>
-    `
-  }
-])
-
-const totalActivities = ref(60)
-
-const recentActivities = ref([
-  {
-    id: 1,
-    type: 'export',
-    title: 'Xuất hàng',
-    description: 'Lô LREF-2409-A bán 20 hộp',
-    time: '21:00'
-  },
-  {
-    id: 2,
-    type: 'import',
-    title: 'Nhập hàng',
-    description: 'Effaclar Duo+M 60 hộp',
-    time: '16:22'
-  },
-  {
-    id: 3,
-    type: 'adjust',
-    title: 'Điều chỉnh',
-    description: 'Hư hỏng bao bì -2',
-    time: '17:02'
-  },
-  {
-    id: 4,
-    type: 'alert',
-    title: 'Cảnh báo',
-    description: 'Lô BIOA-2407-A sắp hết hạn',
-    time: '15:15'
-  }
-])
+const alerts = ref([])
+const totalActivities = ref(0)
+const recentActivities = ref([])
 
 const icons = {
   warehouse: `
@@ -370,7 +294,34 @@ const loadDashboard = async () => {
   error.value = ''
 
   try {
-    await new Promise((resolve) => setTimeout(resolve, 650))
+    const [dashboard, alertResult] = await Promise.all([
+      warehouseApi.getDashboard(),
+      warehouseApi.getAlerts({ page: 1, pageSize: 5 })
+    ])
+
+    dashboardStats.products = Number(dashboard.total_products || 0)
+    dashboardStats.batches = Number(dashboard.total_batches || 0)
+    dashboardStats.inventoryValue = Number(dashboard.inventory_value || 0)
+    dashboardStats.alerts = Number(
+      (dashboard.alerts_summary?.low_stock || 0) +
+      (dashboard.alerts_summary?.expiring_soon || 0) +
+      (dashboard.alerts_summary?.expired || 0)
+    )
+    dashboardStats.totalBatches = Number(dashboard.total_batches || 0)
+    dashboardStats.expiringSoon = Number(dashboard.expiring_batches || 0)
+
+    alerts.value = (alertResult.data || []).map((item) => ({
+      id: item.id,
+      theme: item.alert_type === 'expired' ? 'danger' : item.alert_type === 'low_stock' ? 'orange' : 'warning',
+      title: item.product_name || item.product?.name || 'Cảnh báo kho',
+      message: item.message || '',
+      tag: item.alert_type === 'expired' ? 'HẾT HẠN' : item.alert_type === 'low_stock' ? 'TỒN KHO THẤP' : 'SẮP HẾT HẠN',
+      tagClass: item.alert_type === 'expired' ? 'red' : item.alert_type === 'low_stock' ? 'orange' : 'yellow',
+      icon: icons.warning
+    }))
+
+    recentActivities.value = []
+    totalActivities.value = 0
     hasLoadedOnce.value = true
   } catch (err) {
     error.value = err?.message || 'Không tải được dashboard.'

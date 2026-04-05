@@ -1,10 +1,8 @@
-import { defineAsyncComponent } from 'vue'
-
-const WarehouseDashboard = defineAsyncComponent(() => import('@/views/warehouse/Dashboard.vue'))
-const WarehouseProducts = defineAsyncComponent(() => import('@/views/warehouse/Products.vue'))
-const WarehouseBatches = defineAsyncComponent(() => import('@/views/warehouse/Batches.vue'))
-const WarehouseInventory = defineAsyncComponent(() => import('@/views/warehouse/Inventory.vue'))
-const WarehouseAlerts = defineAsyncComponent(() => import('@/views/warehouse/Alerts.vue'))
+import WarehouseDashboard from '@/views/warehouse/Dashboard.vue'
+import WarehouseProducts from '@/views/warehouse/Products.vue'
+import WarehouseBatches from '@/views/warehouse/Batches.vue'
+import WarehouseInventory from '@/views/warehouse/Inventory.vue'
+import WarehouseAlerts from '@/views/warehouse/Alerts.vue'
 
 const warehouseRoutes = [
   {

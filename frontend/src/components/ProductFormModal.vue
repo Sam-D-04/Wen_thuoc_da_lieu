@@ -129,6 +129,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  timeout: 10000
+})
 
 const props = defineProps({
   initialProduct: {
@@ -151,21 +157,6 @@ const EMPTY_FORM = {
   volume: '',
   is_active: true
 }
-
-const DEFAULT_CATEGORIES = [
-  { id: 1, name: 'Mụn' },
-  { id: 2, name: 'Phục hồi da' },
-  { id: 3, name: 'Chống nắng' },
-  { id: 4, name: 'Viêm da' },
-  { id: 5, name: 'Chống lão hóa' },
-  { id: 6, name: 'Tẩy trang' }
-]
-
-const DEFAULT_BRANDS = [
-  { id: 1, name: 'Dermacity' },
-  { id: 2, name: 'CeraCare' },
-  { id: 3, name: 'SkinLab' }
-]
 
 const form = reactive({ ...EMPTY_FORM })
 const errors = reactive({})
@@ -259,18 +250,15 @@ const validateForm = () => {
 const loadMeta = async () => {
   loadingMeta.value = true
   try {
-    const [categoryRes, brandRes] = await Promise.all([fetch('/categories'), fetch('/brands')])
-    const categoryData = categoryRes.ok ? await categoryRes.json() : []
-    const brandData = brandRes.ok ? await brandRes.json() : []
+    const [categoryRes, brandRes] = await Promise.all([apiClient.get('/categories'), apiClient.get('/brands')])
+    const categoryData = categoryRes.data || []
+    const brandData = brandRes.data || []
 
     categories.value = Array.isArray(categoryData) ? categoryData : categoryData.data || []
     brands.value = Array.isArray(brandData) ? brandData : brandData.data || []
-
-    if (!categories.value.length) categories.value = DEFAULT_CATEGORIES
-    if (!brands.value.length) brands.value = DEFAULT_BRANDS
   } catch (error) {
-    categories.value = DEFAULT_CATEGORIES
-    brands.value = DEFAULT_BRANDS
+    categories.value = []
+    brands.value = []
   } finally {
     loadingMeta.value = false
   }

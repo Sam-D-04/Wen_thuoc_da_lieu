@@ -1,93 +1,80 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import axios from 'axios'
+
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  timeout: 10000,
+  headers: {
+    Accept: 'application/json'
+  }
+})
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token')
+  if (token && !token.startsWith('mock-token-')) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
+  } else if (token && token.startsWith('mock-token-')) {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
+  }
+  return config
+})
+
+const normalizeProduct = (product) => {
+  const isActive = typeof product.is_active === 'boolean'
+    ? product.is_active
+    : product.is_active === 1 || product.is_active === '1' || product.is_active === 'true' || product.status === 'Hoạt động'
+
+  return {
+    ...product,
+    price: Number(product.price_listed ?? product.price ?? 0),
+    price_listed: Number(product.price_listed ?? product.price ?? 0),
+    stock_quantity: Number(product.stock_quantity ?? product.stock ?? 0),
+    stock_warning: Number(product.stock_warning ?? 10),
+    category_name: product.category?.name || product.category_name || product.category || 'N/A',
+    image_url: product.image_url || product.image || '',
+    is_active: isActive,
+    status: isActive ? 'Hoạt động' : 'Ngừng'
+  }
+}
 
 export const useProductStore = defineStore('product', () => {
-  const products = ref([
-    {
-      id: 1,
-      name: 'Gel rửa mặt trị mụn BHA 2%',
-      type: 'Sữa rửa mặt',
-      category: 'Mụn',
-      price: 189000,
-      stock: 52,
-      stock_quantity: 52,
-      stock_warning: 10,
-      ingredients: 'Salicylic Acid 2%, Zinc PCA, Panthenol',
-      usage: 'Làm ướt da mặt, massage 30 giây và rửa lại với nước',
-      image: '/images/product-1.jpg',
-      tags: ['Da dầu', 'Mụn'],
-      status: 'Hoạt động'
-    },
-    {
-      id: 2,
-      name: 'Kem phục hồi hàng rào da Ceramide',
-      type: 'Kem dưỡng',
-      category: 'Phục hồi da',
-      price: 265000,
-      stock: 34,
-      stock_quantity: 34,
-      stock_warning: 10,
-      ingredients: 'Ceramide NP, Cholesterol, Madecassoside',
-      usage: 'Thoa lớp mỏng sau serum, dùng sáng và tối',
-      image: '/images/product-2.jpg',
-      tags: ['Da nhạy cảm', 'Phục hồi'],
-      status: 'Hoạt động'
-    },
-    {
-      id: 3,
-      name: 'Serum giảm thâm mụn Niacinamide 10%',
-      type: 'Serum',
-      category: 'Thâm mụn',
-      price: 320000,
-      stock: 18,
-      stock_quantity: 18,
-      stock_warning: 10,
-      ingredients: 'Niacinamide 10%, Tranexamic Acid 3%, NAG',
-      usage: 'Thoa 2-3 giọt lên vùng da thâm sau bước làm sạch',
-      image: '/images/product-3.jpg',
-      tags: ['Mụn', 'Tăng sắc tố'],
-      status: 'Hoạt động'
-    },
-    {
-      id: 4,
-      name: 'Kem chống nắng da nhạy cảm SPF50+ PA++++',
-      type: 'Chống nắng',
-      category: 'Chống nắng',
-      price: 298000,
-      stock: 0,
-      stock_quantity: 0,
-      stock_warning: 10,
-      ingredients: 'Uvinul A Plus, Tinosorb S, Panthenol',
-      usage: 'Thoa đủ lượng trước nắng 15 phút, lặp lại mỗi 2-3 giờ',
-      image: '/images/product-4.jpg',
-      tags: ['Da nhạy cảm', 'Bảo vệ da'],
-      status: 'Ngừng'
-    },
-    {
-      id: 5,
-      name: 'Kem chấm mụn Benzoyl Peroxide 2.5%',
-      type: 'Điều trị chấm điểm',
-      category: 'Điều trị mụn',
-      price: 145000,
-      stock: 6,
-      stock_quantity: 6,
-      stock_warning: 10,
-      ingredients: 'Benzoyl Peroxide 2.5%, Allantoin, Glycerin',
-      usage: 'Chấm trực tiếp lên nốt mụn 1-2 lần/ngày',
-      image: '/images/product-5.jpg',
-      tags: ['Mụn viêm', 'Da dầu'],
-      status: 'Ngừng'
-    }
-  ])
+  const products = ref([])
 
   const totalProducts = computed(() => products.value.length)
-  const lowStockProducts = computed(() => products.value.filter(p => p.stock <= 10).length)
+  const lowStockProducts = computed(() => products.value.filter(p => Number(p.stock_quantity ?? p.stock ?? 0) <= 10).length)
+
+  const fetchProducts = async (params = {}) => {
+    const response = await apiClient.get('/products', {
+      params: {
+        per_page: params.per_page || 50,
+        search: params.search || undefined,
+        category_id: params.category_id || undefined,
+        brand_id: params.brand_id || undefined,
+        category: params.category || undefined,
+        sort: params.sort || undefined
+      }
+    })
+
+    const list = response.data?.data || []
+    products.value = list.map(normalizeProduct)
+    return response.data
+  }
 
   const addProduct = (product) => {
-    product.id = Math.max(...products.value.map(p => p.id)) + 1
-    product.stock_quantity = product.stock_quantity ?? product.stock ?? 0
-    product.stock_warning = product.stock_warning ?? 10
-    products.value.push(product)
+    const nextId = products.value.length
+      ? Math.max(...products.value.map((p) => Number(p.id) || 0)) + 1
+      : 1
+
+    const normalized = normalizeProduct({
+      ...product,
+      id: nextId
+    })
+
+    products.value.push(normalized)
+    return normalized
   }
 
   const updateProduct = (id, updates) => {
@@ -113,6 +100,7 @@ export const useProductStore = defineStore('product', () => {
     products,
     totalProducts,
     lowStockProducts,
+    fetchProducts,
     addProduct,
     updateProduct,
     deleteProduct
