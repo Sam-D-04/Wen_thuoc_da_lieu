@@ -1,1 +1,2 @@
-"# drug-store" 
+cd frontend
+npm run dev
