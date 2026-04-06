@@ -90,6 +90,62 @@
               </div>
             </label>
           </div>
+
+          <!-- Form thông tin thẻ ngân hàng (hiện khi chọn bank_transfer) -->
+          <transition name="slide-down">
+            <div v-if="form.payment_method === 'bank_transfer'" class="mt-4 bg-blue-50 rounded-xl p-4 space-y-3 border border-blue-100">
+              <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Thông tin thẻ ngân hàng</p>
+
+              <!-- Ngân hàng -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Ngân hàng <span class="text-red-400">*</span></label>
+                <select
+                  v-model="bankForm.bankName"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+                >
+                  <option value="">-- Chọn ngân hàng --</option>
+                  <option value="Vietcombank">Vietcombank (VCB)</option>
+                  <option value="BIDV">BIDV</option>
+                  <option value="Agribank">Agribank</option>
+                  <option value="Techcombank">Techcombank (TCB)</option>
+                  <option value="MB Bank">MB Bank</option>
+                  <option value="VPBank">VPBank</option>
+                  <option value="ACB">ACB</option>
+                  <option value="Sacombank">Sacombank</option>
+                  <option value="TPBank">TPBank</option>
+                  <option value="OCB">OCB</option>
+                  <option value="HDBank">HDBank</option>
+                  <option value="SHB">SHB</option>
+                </select>
+              </div>
+
+              <!-- Số thẻ -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Số thẻ / Số tài khoản <span class="text-red-400">*</span></label>
+                <input
+                  v-model="bankForm.cardNumber"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="0000 0000 0000 0000"
+                  maxlength="19"
+                  @input="formatCardNumber"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white tracking-widest font-mono"
+                />
+              </div>
+
+              <!-- Tên chủ thẻ -->
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Tên chủ thẻ <span class="text-red-400">*</span></label>
+                <input
+                  v-model="bankForm.cardHolder"
+                  type="text"
+                  placeholder="NGUYEN VAN A"
+                  @input="bankForm.cardHolder = bankForm.cardHolder.toUpperCase()"
+                  class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white uppercase tracking-wide"
+                />
+              </div>
+            </div>
+          </transition>
         </div>
       </div>
 
@@ -198,6 +254,13 @@ const form = ref({
   payment_method: 'bank_transfer'
 })
 
+const bankForm = ref({ bankName: '', cardNumber: '', cardHolder: '' })
+
+const formatCardNumber = () => {
+  const digits = bankForm.value.cardNumber.replace(/\D/g, '').slice(0, 16)
+  bankForm.value.cardNumber = digits.replace(/(.{4})/g, '$1 ').trim()
+}
+
 const paymentMethods = [
   { value: 'bank_transfer', label: 'Chuyển khoản ngân hàng', icon: '🏦', desc: 'Chuyển khoản trực tiếp qua ngân hàng' },
   { value: 'vnpay', label: 'VNPay', icon: '💳', desc: 'Thanh toán qua cổng VNPay' },
@@ -225,6 +288,13 @@ const handleSubmit = async () => {
     return
   }
 
+  if (form.value.payment_method === 'bank_transfer') {
+    if (!bankForm.value.bankName || !bankForm.value.cardNumber || !bankForm.value.cardHolder) {
+      error.value = 'Vui lòng điền đầy đủ thông tin thẻ ngân hàng.'
+      return
+    }
+  }
+
   isSubmitting.value = true
   try {
     const payload = {
@@ -241,7 +311,9 @@ const handleSubmit = async () => {
         city: form.value.city || ''
       },
       payment_method: form.value.payment_method,
-      note: form.value.note || ''
+      note: form.value.payment_method === 'bank_transfer'
+        ? `[TK: ${bankForm.value.bankName} - ${bankForm.value.cardNumber} - ${bankForm.value.cardHolder}]${form.value.note ? ' ' + form.value.note : ''}`
+        : (form.value.note || '')
     }
 
     const response = await apiClient.post('/orders', payload)
@@ -276,3 +348,19 @@ const handleSubmit = async () => {
   }
 }
 </script>
+
+<style scoped>
+.slide-down-enter-active, .slide-down-leave-active {
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+.slide-down-enter-from, .slide-down-leave-to {
+  opacity: 0;
+  max-height: 0;
+  transform: translateY(-6px);
+}
+.slide-down-enter-to, .slide-down-leave-from {
+  opacity: 1;
+  max-height: 400px;
+}
+</style>

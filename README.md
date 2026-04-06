@@ -1,6 +1,5 @@
 # 💊 Dermacity — Dược Mỹ Phẩm Da Liễu
 
-> Website e-commerce chuyên phân phối dược mỹ phẩm da liễu chính hãng.
 > Kiến trúc: **Frontend (Vue.js SPA)** + **Backend (Laravel API)** tách biệt hoàn toàn.
 
 ---
