@@ -91,12 +91,6 @@
             </td>
             <td class="col-actions">
               <button
-                class="action-btn add-batch-btn"
-                title="Nhập thêm lô cho sản phẩm này"
-                v-html="getAddBatchIcon()"
-                @click="openQuickAddModal(batch)"
-              ></button>
-              <button
                 class="action-btn edit-btn"
                 title="Chỉnh sửa"
                 v-html="getEditIcon()"
@@ -268,9 +262,11 @@
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { message, Modal } from 'ant-design-vue'
+import { useRouter } from 'vue-router'
 import { useBatchStore } from '@/stores/batches'
 import { useProductStore } from '@/stores/products'
 
+const router = useRouter()
 const batchStore = useBatchStore()
 const productStore = useProductStore()
 
@@ -443,14 +439,8 @@ const openAddModal = async () => {
   formRef.value?.clearValidate?.()
 }
 
-const openQuickAddModal = async (batch) => {
-  modalMode.value = 'add'
-  editingBatchId.value = null
-  resetForm()
-  formState.product_id = batch.product_id
-  showModal.value = true
-  await nextTick()
-  formRef.value?.clearValidate?.()
+const openQuickAddModal = (batch) => {
+  router.push({ path: '/products', query: { editId: batch.product_id } })
 }
 
 const openEditModal = async (batch) => {

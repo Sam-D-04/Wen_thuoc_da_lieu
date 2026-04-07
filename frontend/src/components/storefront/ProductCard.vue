@@ -47,17 +47,7 @@
 
       <div class="flex items-center justify-between">
         <span class="text-base font-bold text-primary">{{ formatPrice(product.price_listed) }}</span>
-        <button
-          v-if="product.stock_quantity > 0"
-          @click.stop="$emit('add-to-cart', product)"
-          class="flex items-center gap-1 text-xs text-primary border border-primary/30 hover:bg-primary hover:text-white hover:border-primary rounded-lg px-2 py-1 transition-all duration-200 font-medium"
-        >
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Chọn mua
-        </button>
-        <span v-else class="text-xs text-gray-400">Hết hàng</span>
+        <span v-if="product.stock_quantity <= 0" class="text-xs text-gray-400">Hết hàng</span>
       </div>
     </div>
   </div>

@@ -108,10 +108,12 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useProductStore } from '@/stores/products'
 import { warehouseApi } from '@/api/warehouse'
 import ProductFormModal from '@/components/ProductFormModal.vue'
 
+const route = useRoute()
 const productStore = useProductStore()
 
 const products = computed(() => productStore.products)
@@ -336,6 +338,12 @@ onMounted(async () => {
     fetchProducts()
   ])
   categories.value = categoryList
+
+  const editId = route.query.editId
+  if (editId) {
+    const target = productStore.products.find(p => String(p.id) === String(editId))
+    if (target) startEdit(target)
+  }
 })
 </script>
 

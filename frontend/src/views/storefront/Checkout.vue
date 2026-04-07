@@ -91,61 +91,6 @@
             </label>
           </div>
 
-          <!-- Form thông tin thẻ ngân hàng (hiện khi chọn bank_transfer) -->
-          <transition name="slide-down">
-            <div v-if="form.payment_method === 'bank_transfer'" class="mt-4 bg-blue-50 rounded-xl p-4 space-y-3 border border-blue-100">
-              <p class="text-xs font-semibold text-blue-700 uppercase tracking-wide">Thông tin thẻ ngân hàng</p>
-
-              <!-- Ngân hàng -->
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Ngân hàng <span class="text-red-400">*</span></label>
-                <select
-                  v-model="bankForm.bankName"
-                  class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
-                >
-                  <option value="">-- Chọn ngân hàng --</option>
-                  <option value="Vietcombank">Vietcombank (VCB)</option>
-                  <option value="BIDV">BIDV</option>
-                  <option value="Agribank">Agribank</option>
-                  <option value="Techcombank">Techcombank (TCB)</option>
-                  <option value="MB Bank">MB Bank</option>
-                  <option value="VPBank">VPBank</option>
-                  <option value="ACB">ACB</option>
-                  <option value="Sacombank">Sacombank</option>
-                  <option value="TPBank">TPBank</option>
-                  <option value="OCB">OCB</option>
-                  <option value="HDBank">HDBank</option>
-                  <option value="SHB">SHB</option>
-                </select>
-              </div>
-
-              <!-- Số thẻ -->
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Số thẻ / Số tài khoản <span class="text-red-400">*</span></label>
-                <input
-                  v-model="bankForm.cardNumber"
-                  type="text"
-                  inputmode="numeric"
-                  placeholder="0000 0000 0000 0000"
-                  maxlength="19"
-                  @input="formatCardNumber"
-                  class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white tracking-widest font-mono"
-                />
-              </div>
-
-              <!-- Tên chủ thẻ -->
-              <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Tên chủ thẻ <span class="text-red-400">*</span></label>
-                <input
-                  v-model="bankForm.cardHolder"
-                  type="text"
-                  placeholder="NGUYEN VAN A"
-                  @input="bankForm.cardHolder = bankForm.cardHolder.toUpperCase()"
-                  class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white uppercase tracking-wide"
-                />
-              </div>
-            </div>
-          </transition>
         </div>
       </div>
 
@@ -251,20 +196,12 @@ const form = ref({
   district: '',
   city: '',
   note: '',
-  payment_method: 'bank_transfer'
+  payment_method: 'vnpay'
 })
 
-const bankForm = ref({ bankName: '', cardNumber: '', cardHolder: '' })
-
-const formatCardNumber = () => {
-  const digits = bankForm.value.cardNumber.replace(/\D/g, '').slice(0, 16)
-  bankForm.value.cardNumber = digits.replace(/(.{4})/g, '$1 ').trim()
-}
 
 const paymentMethods = [
-  { value: 'bank_transfer', label: 'Chuyển khoản ngân hàng', icon: '🏦', desc: 'Chuyển khoản trực tiếp qua ngân hàng' },
-  { value: 'vnpay', label: 'VNPay', icon: '💳', desc: 'Thanh toán qua cổng VNPay' },
-  { value: 'momo', label: 'MoMo', icon: '💜', desc: 'Ví điện tử MoMo' },
+  { value: 'vnpay', label: 'VNPay', icon: '💳', desc: 'Quét mã QR để thanh toán nhanh' },
 ]
 
 const shippingFee = computed(() => cartStore.totalAmount >= 299000 ? 0 : 25000)
@@ -288,13 +225,6 @@ const handleSubmit = async () => {
     return
   }
 
-  if (form.value.payment_method === 'bank_transfer') {
-    if (!bankForm.value.bankName || !bankForm.value.cardNumber || !bankForm.value.cardHolder) {
-      error.value = 'Vui lòng điền đầy đủ thông tin thẻ ngân hàng.'
-      return
-    }
-  }
-
   isSubmitting.value = true
   try {
     const payload = {
@@ -311,9 +241,7 @@ const handleSubmit = async () => {
         city: form.value.city || ''
       },
       payment_method: form.value.payment_method,
-      note: form.value.payment_method === 'bank_transfer'
-        ? `[TK: ${bankForm.value.bankName} - ${bankForm.value.cardNumber} - ${bankForm.value.cardHolder}]${form.value.note ? ' ' + form.value.note : ''}`
-        : (form.value.note || '')
+      note: form.value.note || ''
     }
 
     const response = await apiClient.post('/orders', payload)
@@ -322,25 +250,13 @@ const handleSubmit = async () => {
     cartStore.clearCart()
     await productStore.fetchProducts()
 
-    if (data.payment_url) {
-      window.location.href = data.payment_url
-      return
-    }
-
-    if (form.value.payment_method === 'bank_transfer') {
-      router.push({
-        path: '/payment-instruction',
-        query: {
-          code:   data.order_code || String(data.order_id || ''),
-          amount: data.final_amount
-        }
-      })
-      return
-    }
-
-    orderId.value = data.order_code || String(data.order_id || '')
-    orderSuccess.value = true
-    setTimeout(() => router.push('/account/orders'), 1800)
+    router.push({
+      path: '/payment-instruction',
+      query: {
+        code:   data.order_code || String(data.order_id || ''),
+        amount: data.final_amount
+      }
+    })
   } catch (err) {
     error.value = err?.response?.data?.message || err?.message || 'Đặt hàng thất bại. Vui lòng thử lại.'
   } finally {
