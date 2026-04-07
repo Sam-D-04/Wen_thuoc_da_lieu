@@ -26,8 +26,9 @@ Route::get('/brands',             [BrandController::class, 'index']);
 // ─── Authenticated routes ────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
-    Route::get('/me',     [AuthController::class, 'me']);
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me',               [AuthController::class, 'me']);
+    Route::post('/logout',          [AuthController::class, 'logout']);
+    Route::put('/change-password',  [AuthController::class, 'changePassword']);
 
     // Orders — customer
     Route::get('/orders',          [OrderController::class, 'index']);

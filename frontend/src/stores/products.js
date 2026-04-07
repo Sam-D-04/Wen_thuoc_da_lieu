@@ -84,12 +84,13 @@ export const useProductStore = defineStore('product', () => {
   const fetchProducts = async (params = {}) => {
     const response = await apiClient.get('/products', {
       params: {
-        per_page: params.per_page || 50,
-        search: params.search || undefined,
+        per_page:    params.per_page    || 50,
+        page:        params.page        || 1,
+        search:      params.search      || undefined,
         category_id: params.category_id || undefined,
-        brand_id: params.brand_id || undefined,
-        category: params.category || undefined,
-        sort: params.sort || undefined
+        brand_id:    params.brand_id    || undefined,
+        category:    params.category    || undefined,
+        sort:        params.sort        || undefined,
       }
     })
 

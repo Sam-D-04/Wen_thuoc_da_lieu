@@ -18,6 +18,7 @@ import ProductDetail from '@/views/storefront/ProductDetail.vue'
 import Checkout from '@/views/storefront/Checkout.vue'
 import Account from '@/views/storefront/Account.vue'
 import PaymentInstruction from '@/views/storefront/PaymentInstruction.vue'
+import VNPayResult from '@/views/storefront/VNPayResult.vue'
 
 const routes = [
   // ─── Auth ─────────────────────────────────────────────
@@ -62,6 +63,12 @@ const routes = [
         name: 'PaymentInstruction',
         component: PaymentInstruction,
         meta: { title: 'Hướng dẫn thanh toán', requiresAuth: true }
+      },
+      {
+        path: '/vnpay-result',
+        name: 'VNPayResult',
+        component: VNPayResult,
+        meta: { title: 'Kết quả thanh toán VNPay' }
       }
     ]
   },

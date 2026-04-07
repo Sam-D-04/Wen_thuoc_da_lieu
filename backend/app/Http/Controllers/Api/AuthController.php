@@ -158,6 +158,25 @@ class AuthController extends Controller
         return response()->json($request->user()->load('addresses'));
     }
 
+    // PUT /api/change-password
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password'          => 'required',
+            'new_password'              => 'required|string|min:8|confirmed',
+        ]);
+
+        if (!Hash::check($request->current_password, $request->user()->password)) {
+            return response()->json(['message' => 'Mật khẩu hiện tại không đúng'], 422);
+        }
+
+        $request->user()->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        return response()->json(['message' => 'Đổi mật khẩu thành công']);
+    }
+
     // POST /api/logout
     public function logout(Request $request)
     {

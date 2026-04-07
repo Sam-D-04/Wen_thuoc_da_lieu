@@ -73,10 +73,33 @@
           </div>
 
           <!-- Notifications -->
-          <button class="topbar-btn notification-btn" title="Thông báo">
-            <span class="icon" v-html="getNavIcon('bell')"></span>
-            <span v-if="unreadCount > 0" class="badge">{{ unreadCount }}</span>
-          </button>
+          <div class="notification-wrap" v-click-outside="closeNotification">
+            <button class="topbar-btn notification-btn" title="Thông báo" @click="toggleNotification">
+              <span class="icon" v-html="getNavIcon('bell')"></span>
+              <span v-if="unreadCount > 0" class="badge">{{ unreadCount }}</span>
+            </button>
+            <div v-if="notificationOpen" class="notification-dropdown">
+              <div class="notif-header">
+                <span class="notif-title">Thông báo</span>
+                <router-link to="/admin/alerts" class="notif-view-all" @click="notificationOpen = false">Xem tất cả</router-link>
+              </div>
+              <div v-if="alertStore.unresolvedRecentAlerts.length === 0" class="notif-empty">
+                Không có thông báo mới
+              </div>
+              <div
+                v-for="alert in alertStore.unresolvedRecentAlerts"
+                :key="alert.id"
+                class="notif-item"
+                :class="alert.severity"
+              >
+                <div class="notif-dot" :class="alert.severity"></div>
+                <div class="notif-body">
+                  <p class="notif-msg">{{ alert.title }}</p>
+                  <p class="notif-sub">{{ alert.message }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Admin Profile Dropdown -->
           <div class="profile-dropdown">
@@ -119,8 +142,21 @@ const authStore = useAuthStore()
 
 const sidebarCollapsed = ref(false)
 const profileDropdownOpen = ref(false)
+const notificationOpen = ref(false)
 const pageRenderError = ref('')
 const isLoggingOut = ref(false)
+
+const toggleNotification = () => { notificationOpen.value = !notificationOpen.value }
+const closeNotification  = () => { notificationOpen.value = false }
+
+// v-click-outside directive
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (e) => { if (!el.contains(e.target)) binding.value(e) }
+    document.addEventListener('mousedown', el._clickOutside)
+  },
+  unmounted(el) { document.removeEventListener('mousedown', el._clickOutside) }
+}
 
 onErrorCaptured((error) => {
   pageRenderError.value = error instanceof Error ? error.message : String(error)
@@ -682,6 +718,92 @@ const getNavIcon = (key) => navIconMap[key] || navIconMap.dashboard
   font-size: 11px;
   font-weight: 700;
   border: 2px solid white;
+}
+
+/* Notification dropdown */
+.notification-wrap { position: relative; }
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.notif-title { font-size: 13px; font-weight: 700; color: #1e3a8a; }
+
+.notif-view-all {
+  font-size: 12px;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.notif-view-all:hover { text-decoration: underline; }
+
+.notif-empty {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.notif-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.2s;
+}
+
+.notif-item:hover { background: #f8fafc; }
+
+.notif-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.notif-dot.danger  { background: #ef4444; }
+.notif-dot.warning { background: #f59e0b; }
+.notif-dot.info    { background: #3b82f6; }
+
+.notif-body { flex: 1; min-width: 0; }
+
+.notif-msg {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notif-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Profile Dropdown */

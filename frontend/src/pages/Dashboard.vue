@@ -6,7 +6,7 @@
         <h1>Tổng quan</h1>
         <p class="breadcrumb">Nhà thuốc Da liễu / Tổng quan</p>
       </div>
-      <button class="btn btn-primary"><span class="btn-icon" v-html="getDashboardIcon('report')"></span>Xuất báo cáo</button>
+      <button class="btn btn-primary" @click="exportDashboardCSV"><span class="btn-icon" v-html="getDashboardIcon('report')"></span>Xuất báo cáo</button>
     </div>
 
     <!-- Alert Summary -->
@@ -362,6 +362,28 @@ const getTimeAgo = (date) => {
 
 const markAlertAsRead = (id) => {
   alertStore.markAsRead(id)
+}
+
+const exportDashboardCSV = () => {
+  const fmt = (v) => new Intl.NumberFormat('vi-VN').format(v)
+  const rows = [
+    ['Báo cáo tổng quan - Dermacity'],
+    ['Ngày xuất:', new Date().toLocaleDateString('vi-VN')],
+    [],
+    ['Chỉ số', 'Giá trị'],
+    ['Doanh thu', fmt(totalRevenue.value)],
+    ['Đơn chờ xử lý', pendingOrders.value],
+    ['Tổng sản phẩm', totalProducts.value],
+    ['Tổng khách hàng', totalCustomers.value],
+  ]
+  const csv = rows.map(r => r.join(',')).join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `tong-quan-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 const getDashboardIcon = (name) => {

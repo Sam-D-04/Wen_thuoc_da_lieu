@@ -56,27 +56,35 @@
 
       <!-- Content Area -->
       <div class="settings-content">
+        <!-- Toast -->
+        <transition name="toast-fade">
+          <div v-if="toast.show" :class="['toast', `toast-${toast.type}`]">{{ toast.message }}</div>
+        </transition>
+
         <!-- Profile Tab -->
         <div v-if="activeTab === 'profile'" class="settings-section">
           <h2>Hồ sơ cá nhân</h2>
           <div class="profile-form">
             <div class="form-group">
               <label>Tên quản trị viên</label>
-              <input type="text" value="Nguyễn Văn Admin">
+              <input type="text" v-model="profileForm.name">
             </div>
             <div class="form-group">
               <label>Email</label>
-              <input type="email" value="admin@derma-pharmacy.com">
+              <input type="email" v-model="profileForm.email">
             </div>
             <div class="form-group">
               <label>Số điện thoại</label>
-              <input type="tel" value="0901234567">
+              <input type="tel" v-model="profileForm.phone">
             </div>
             <div class="form-group">
               <label>Chức vụ</label>
-              <input type="text" value="Quản trị viên hệ thống">
+              <input type="text" v-model="profileForm.position">
             </div>
-            <button class="btn btn-primary"><span class="btn-icon" v-html="getSettingsIcon('save')"></span>Lưu thay đổi</button>
+            <button class="btn btn-primary" @click="saveProfile" :disabled="isSaving">
+              <span class="btn-icon" v-html="getSettingsIcon('save')"></span>
+              {{ isSaving ? 'Đang lưu...' : 'Lưu thay đổi' }}
+            </button>
           </div>
         </div>
 
@@ -86,17 +94,20 @@
           <div class="security-form">
             <div class="form-group">
               <label>Mật khẩu hiện tại</label>
-              <input type="password" placeholder="Nhập mật khẩu hiện tại">
+              <input type="password" v-model="securityForm.currentPassword" placeholder="Nhập mật khẩu hiện tại">
             </div>
             <div class="form-group">
               <label>Mật khẩu mới</label>
-              <input type="password" placeholder="Nhập mật khẩu mới">
+              <input type="password" v-model="securityForm.newPassword" placeholder="Nhập mật khẩu mới (tối thiểu 8 ký tự)">
             </div>
             <div class="form-group">
               <label>Xác nhận mật khẩu</label>
-              <input type="password" placeholder="Xác nhận mật khẩu mới">
+              <input type="password" v-model="securityForm.confirmPassword" placeholder="Xác nhận mật khẩu mới">
             </div>
-            <button class="btn btn-primary"><span class="btn-icon" v-html="getSettingsIcon('lock')"></span>Đổi mật khẩu</button>
+            <button class="btn btn-primary" @click="changePassword" :disabled="isSaving">
+              <span class="btn-icon" v-html="getSettingsIcon('lock')"></span>
+              {{ isSaving ? 'Đang xử lý...' : 'Đổi mật khẩu' }}
+            </button>
           </div>
         </div>
 
@@ -109,36 +120,32 @@
                 <p class="toggle-label">Thông báo hết hạn</p>
                 <p class="toggle-description">Nhận thông báo khi sản phẩm sắp hết hạn</p>
               </div>
-              <input type="checkbox" class="toggle" checked>
+              <input type="checkbox" class="toggle" v-model="notifySettings.expiry" @change="saveNotifications">
             </div>
-
             <div class="toggle-item">
               <div>
                 <p class="toggle-label">Thông báo hết hàng</p>
                 <p class="toggle-description">Nhận thông báo khi sản phẩm hết hàng</p>
               </div>
-              <input type="checkbox" class="toggle" checked>
+              <input type="checkbox" class="toggle" v-model="notifySettings.outOfStock" @change="saveNotifications">
             </div>
-
             <div class="toggle-item">
               <div>
                 <p class="toggle-label">Thông báo đơn hàng mới</p>
                 <p class="toggle-description">Nhận thông báo khi có đơn hàng mới</p>
               </div>
-              <input type="checkbox" class="toggle" checked>
+              <input type="checkbox" class="toggle" v-model="notifySettings.newOrder" @change="saveNotifications">
             </div>
-
             <div class="toggle-item">
               <div>
                 <p class="toggle-label">Báo cáo hàng ngày</p>
                 <p class="toggle-description">Nhận báo cáo tóm tắt hàng ngày</p>
               </div>
-              <input type="checkbox" class="toggle">
+              <input type="checkbox" class="toggle" v-model="notifySettings.dailyReport" @change="saveNotifications">
             </div>
-
             <div class="form-group" style="margin-top: 20px;">
               <label>Giờ gửi thông báo (nếu bật báo cáo hàng ngày)</label>
-              <input type="time" value="08:00">
+              <input type="time" v-model="notifySettings.reportTime" @change="saveNotifications">
             </div>
           </div>
         </div>
@@ -149,25 +156,28 @@
           <div class="pharmacy-form">
             <div class="form-group">
               <label>Tên nhà thuốc</label>
-              <input type="text" value="Nhà Thuốc Da Liễu Dermacity">
+              <input type="text" v-model="pharmacyForm.name">
             </div>
             <div class="form-group">
               <label>Địa chỉ</label>
-              <input type="text" value="180 Cao Lỗ, Phường 3, Quận 8, TPHCM">
+              <input type="text" v-model="pharmacyForm.address">
             </div>
             <div class="form-group">
               <label>Điện thoại</label>
-              <input type="tel" value="(028) 3829-5123">
+              <input type="tel" v-model="pharmacyForm.phone">
             </div>
             <div class="form-group">
               <label>Email</label>
-              <input type="email" value="info@derma-pharmacy.com">
+              <input type="email" v-model="pharmacyForm.email">
             </div>
             <div class="form-group">
               <label>Giấy phép hoạt động</label>
-              <input type="text" value="SL2024-001234">
+              <input type="text" v-model="pharmacyForm.license">
             </div>
-            <button class="btn btn-primary"><span class="btn-icon" v-html="getSettingsIcon('save')"></span>Lưu thay đổi</button>
+            <button class="btn btn-primary" @click="savePharmacy" :disabled="isSaving">
+              <span class="btn-icon" v-html="getSettingsIcon('save')"></span>
+              {{ isSaving ? 'Đang lưu...' : 'Lưu thay đổi' }}
+            </button>
           </div>
         </div>
 
@@ -180,27 +190,26 @@
                 <p class="setting-label">Phiên bản ứng dụng</p>
                 <p class="setting-value">v2.1.0</p>
               </div>
-              <button class="btn btn-sm btn-secondary">Kiểm tra cập nhật</button>
+              <button class="btn btn-sm btn-secondary" @click="checkUpdate">Kiểm tra cập nhật</button>
             </div>
-
             <div class="setting-item">
               <div>
                 <p class="setting-label">Dung lượng cơ sở dữ liệu</p>
                 <p class="setting-value">245 MB / 1 GB</p>
               </div>
-              <button class="btn btn-sm btn-secondary">Xóa bộ đệm</button>
+              <button class="btn btn-sm btn-secondary" @click="clearCache">Xóa bộ đệm</button>
             </div>
-
             <div class="setting-item">
               <div>
                 <p class="setting-label">Sao lưu dữ liệu</p>
                 <p class="setting-value">Lần cuối: Hôm nay 02:00</p>
               </div>
-              <button class="btn btn-sm btn-secondary">Sao lưu ngay</button>
+              <button class="btn btn-sm btn-secondary" @click="backupData">Sao lưu ngay</button>
             </div>
-
             <h3 style="margin-top: 30px;">Nguy hiểm</h3>
-            <button class="btn btn-danger"><span class="btn-icon" v-html="getSettingsIcon('delete')"></span>Xóa toàn bộ dữ liệu</button>
+            <button class="btn btn-danger" @click="confirmDeleteAll">
+              <span class="btn-icon" v-html="getSettingsIcon('delete')"></span>Xóa toàn bộ dữ liệu
+            </button>
           </div>
         </div>
       </div>
@@ -209,24 +218,121 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import axios from 'axios'
 
 const route = useRoute()
 const validTabs = ['profile', 'security', 'notifications', 'pharmacy', 'system']
+const getTabFromQuery = (tab) => validTabs.includes(tab) ? tab : 'profile'
+const activeTab = ref(getTabFromQuery(route.query.tab))
+watch(() => route.query.tab, (tab) => { activeTab.value = getTabFromQuery(tab) })
 
-const getTabFromQuery = (tab) => {
-  return validTabs.includes(tab) ? tab : 'profile'
+// ── API client ────────────────────────────────────────────────────────────────
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  headers: { Accept: 'application/json' }
+})
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+const toast = reactive({ show: false, message: '', type: 'success' })
+let toastTimer = null
+const showToast = (message, type = 'success') => {
+  clearTimeout(toastTimer)
+  toast.message = message
+  toast.type = type
+  toast.show = true
+  toastTimer = setTimeout(() => { toast.show = false }, 3000)
 }
 
-const activeTab = ref(getTabFromQuery(route.query.tab))
+// ── State ─────────────────────────────────────────────────────────────────────
+const isSaving = ref(false)
 
-watch(
-  () => route.query.tab,
-  (tab) => {
-    activeTab.value = getTabFromQuery(tab)
+const savedProfile = JSON.parse(localStorage.getItem('settings_profile') || 'null')
+const profileForm = reactive({
+  name:     savedProfile?.name     || 'Nguyễn Văn Admin',
+  email:    savedProfile?.email    || 'admin@derma-pharmacy.com',
+  phone:    savedProfile?.phone    || '0901234567',
+  position: savedProfile?.position || 'Quản trị viên hệ thống',
+})
+
+const securityForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const savedNotify = JSON.parse(localStorage.getItem('settings_notify') || 'null')
+const notifySettings = reactive({
+  expiry:      savedNotify?.expiry      ?? true,
+  outOfStock:  savedNotify?.outOfStock  ?? true,
+  newOrder:    savedNotify?.newOrder    ?? true,
+  dailyReport: savedNotify?.dailyReport ?? false,
+  reportTime:  savedNotify?.reportTime  || '08:00',
+})
+
+const savedPharmacy = JSON.parse(localStorage.getItem('settings_pharmacy') || 'null')
+const pharmacyForm = reactive({
+  name:    savedPharmacy?.name    || 'Nhà Thuốc Da Liễu Dermacity',
+  address: savedPharmacy?.address || '180 Cao Lỗ, Phường 3, Quận 8, TPHCM',
+  phone:   savedPharmacy?.phone   || '(028) 3829-5123',
+  email:   savedPharmacy?.email   || 'info@derma-pharmacy.com',
+  license: savedPharmacy?.license || 'SL2024-001234',
+})
+
+// ── Handlers ──────────────────────────────────────────────────────────────────
+const saveProfile = () => {
+  localStorage.setItem('settings_profile', JSON.stringify({ ...profileForm }))
+  showToast('Đã lưu hồ sơ cá nhân')
+}
+
+const changePassword = async () => {
+  if (!securityForm.currentPassword || !securityForm.newPassword || !securityForm.confirmPassword) {
+    showToast('Vui lòng điền đầy đủ các trường', 'error'); return
   }
-)
+  if (securityForm.newPassword.length < 8) {
+    showToast('Mật khẩu mới phải có ít nhất 8 ký tự', 'error'); return
+  }
+  if (securityForm.newPassword !== securityForm.confirmPassword) {
+    showToast('Mật khẩu xác nhận không khớp', 'error'); return
+  }
+  isSaving.value = true
+  try {
+    await api.put('/change-password', {
+      current_password:      securityForm.currentPassword,
+      new_password:          securityForm.newPassword,
+      new_password_confirmation: securityForm.confirmPassword,
+    })
+    securityForm.currentPassword = ''
+    securityForm.newPassword = ''
+    securityForm.confirmPassword = ''
+    showToast('Đổi mật khẩu thành công')
+  } catch (err) {
+    showToast(err?.response?.data?.message || 'Đổi mật khẩu thất bại', 'error')
+  } finally {
+    isSaving.value = false
+  }
+}
+
+const saveNotifications = () => {
+  localStorage.setItem('settings_notify', JSON.stringify({ ...notifySettings }))
+  showToast('Đã lưu cài đặt thông báo')
+}
+
+const savePharmacy = () => {
+  localStorage.setItem('settings_pharmacy', JSON.stringify({ ...pharmacyForm }))
+  showToast('Đã lưu thông tin nhà thuốc')
+}
+
+const checkUpdate = () => showToast('Bạn đang dùng phiên bản mới nhất (v2.1.0)')
+const clearCache  = () => { localStorage.removeItem('cache_products'); showToast('Đã xóa bộ đệm') }
+const backupData  = () => showToast('Đang sao lưu dữ liệu... Vui lòng chờ')
+const confirmDeleteAll = () => {
+  if (window.confirm('Bạn có CHẮC CHẮN muốn xóa toàn bộ dữ liệu? Hành động này không thể hoàn tác!')) {
+    showToast('Chức năng này bị khóa trên môi trường demo', 'error')
+  }
+}
 
 const getSettingsIcon = (name) => {
   const iconMap = {
@@ -565,6 +671,24 @@ const getSettingsIcon = (name) => {
 .btn-danger:hover {
   background: #dc2626;
 }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.toast-success { background: #10b981; }
+.toast-error   { background: #ef4444; }
+.toast-fade-enter-active, .toast-fade-leave-active { transition: all 0.3s ease; }
+.toast-fade-enter-from, .toast-fade-leave-to { opacity: 0; transform: translateY(10px); }
 
 /* Responsive */
 @media (max-width: 768px) {

@@ -38,10 +38,7 @@ const resolveImageUrl = (value) => {
   if (normalized.startsWith('storage/')) {
     return `${API_ORIGIN}/${normalized}`
   }
-  if (normalized.startsWith('products/')) {
-    return `${API_ORIGIN}/storage/${normalized}`
-  }
-  return `${API_ORIGIN}/${normalized}`
+  return `${API_ORIGIN}/storage/${normalized}`
 }
 
 export const useProductStore = defineStore('products', () => {

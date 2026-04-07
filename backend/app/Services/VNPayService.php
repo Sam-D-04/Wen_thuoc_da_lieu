@@ -2,40 +2,60 @@
 
 namespace App\Services;
 
+use App\Models\Order;
+use App\Models\Payment;
+
 class VNPayService
 {
-    protected $vnp_TmnCode = "YOUR_TMN_CODE";
-    protected $vnp_HashSecret = "YOUR_SECRET";
-    protected $vnp_Url = "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
+    protected string $tmnCode;
+    protected string $hashSecret;
+    protected string $paymentUrl;
+    protected string $returnUrl;
 
-    public function createPaymentUrl($order)
+    public function __construct()
     {
-        $vnp_TxnRef = $order->id;
-        $vnp_Amount = $order->total_price * 100;
-        $vnp_ReturnUrl = route('vnpay.return');
+        $this->tmnCode    = config('vnpay.tmn_code');
+        $this->hashSecret = config('vnpay.hash_secret');
+        $this->paymentUrl = config('vnpay.url');
+        $this->returnUrl  = config('vnpay.return_url');
+    }
 
+    public function createPaymentUrl(Order $order): string
+    {
         $inputData = [
-            "vnp_Version" => "2.1.0",
-            "vnp_TmnCode" => $this->vnp_TmnCode,
-            "vnp_Amount" => $vnp_Amount,
-            "vnp_Command" => "pay",
-            "vnp_CreateDate" => date('YmdHis'),
-            "vnp_CurrCode" => "VND",
-            "vnp_IpAddr" => request()->ip(),
-            "vnp_Locale" => "vn",
-            "vnp_OrderInfo" => "Thanh toan don hang #" . $order->id,
-            "vnp_OrderType" => "billpayment",
-            "vnp_ReturnUrl" => $vnp_ReturnUrl,
-            "vnp_TxnRef" => $vnp_TxnRef,
+            'vnp_Version'   => '2.1.0',
+            'vnp_TmnCode'   => $this->tmnCode,
+            'vnp_Amount'    => (int) ($order->final_amount * 100),
+            'vnp_Command'   => 'pay',
+            'vnp_CreateDate'=> now()->format('YmdHis'),
+            'vnp_CurrCode'  => 'VND',
+            'vnp_IpAddr'    => request()->ip(),
+            'vnp_Locale'    => 'vn',
+            'vnp_OrderInfo' => 'Thanh toan don hang ' . $order->order_code,
+            'vnp_OrderType' => 'billpayment',
+            'vnp_ReturnUrl' => $this->returnUrl,
+            'vnp_TxnRef'    => $order->id,
+            'vnp_ExpireDate'=> now()->addMinutes(15)->format('YmdHis'),
         ];
 
         ksort($inputData);
 
-        $query = http_build_query($inputData);
-        $hashData = urldecode($query);
+        $hashData = urldecode(http_build_query($inputData));
+        $secureHash = hash_hmac('sha512', $hashData, $this->hashSecret);
 
-        $vnp_SecureHash = hash_hmac('sha512', $hashData, $this->vnp_HashSecret);
+        return $this->paymentUrl . '?' . http_build_query($inputData) . '&vnp_SecureHash=' . $secureHash;
+    }
 
-        return $this->vnp_Url . "?" . $query . '&vnp_SecureHash=' . $vnp_SecureHash;
+    public function verifyReturn(array $params): bool
+    {
+        $secureHash = $params['vnp_SecureHash'] ?? '';
+        $data = $params;
+        unset($data['vnp_SecureHash'], $data['vnp_SecureHashType']);
+        ksort($data);
+
+        $hashData = urldecode(http_build_query($data));
+        $expected = hash_hmac('sha512', $hashData, $this->hashSecret);
+
+        return hash_equals($expected, $secureHash);
     }
 }

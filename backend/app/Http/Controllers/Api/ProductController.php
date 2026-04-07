@@ -21,7 +21,11 @@ class ProductController extends Controller
                       ->whereDate('expiry_date', '>=', now()->toDateString());
                 }
             ], 'remaining_quantity')
-            ->active();
+            ->active()
+            ->whereHas('batches', function ($q) {
+                $q->where('remaining_quantity', '>', 0)
+                  ->whereDate('expiry_date', '>=', now()->toDateString());
+            });
 
         // Search by name or brand name
         if ($s = $request->get('search')) {

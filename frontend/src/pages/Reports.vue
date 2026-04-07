@@ -13,7 +13,7 @@
           <option value="90days">90 ngày</option>
           <option value="year">Năm nay</option>
         </select>
-        <button class="btn btn-primary">📥 Xuất báo cáo</button>
+        <button class="btn btn-primary" @click="exportCSV">📥 Xuất báo cáo</button>
       </div>
     </div>
 
@@ -115,6 +115,32 @@ import { Bar } from 'vue-chartjs'
 import { useOrderStore } from '@/stores/orders'
 
 const selectedPeriod = ref('7days')
+
+const exportCSV = () => {
+  const rows = [
+    ['Báo cáo doanh thu - Dermacity'],
+    ['Kỳ:', selectedPeriod.value],
+    ['Tổng doanh thu:', totalRevenue.value],
+    ['Tổng đơn hàng:', totalOrders.value],
+    ['Giá trị đơn trung bình:', averageOrderValue.value],
+    [],
+    ['Top sản phẩm bán chạy'],
+    ['Tên sản phẩm', 'Doanh thu (VND)'],
+    ...topProducts.value.map(p => [p.name, p.revenue]),
+    [],
+    ['Doanh thu 30 ngày gần đây'],
+    ['Ngày', 'Doanh thu (VND)'],
+    ...revenueChartResult.value.fullDates.map((d, i) => [d, revenueChartResult.value.values[i]]),
+  ]
+  const csv = rows.map(r => r.join(',')).join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `bao-cao-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 const categoryChart = ref(null)
 const orderStore = useOrderStore()
 

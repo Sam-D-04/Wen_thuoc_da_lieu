@@ -92,12 +92,16 @@
     </div>
 
     <!-- Pagination -->
-    <div class="pagination">
-      <button class="page-btn">← Trước</button>
-      <button class="page-btn active">1</button>
-      <button class="page-btn">2</button>
-      <button class="page-btn">3</button>
-      <button class="page-btn">Tiếp →</button>
+    <div class="pagination" v-if="totalPages > 1">
+      <button class="page-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">← Trước</button>
+      <button
+        v-for="page in visiblePages"
+        :key="page"
+        class="page-btn"
+        :class="{ active: page === currentPage }"
+        @click="goToPage(page)"
+      >{{ page }}</button>
+      <button class="page-btn" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">Tiếp →</button>
     </div>
   </div>
 </template>
@@ -118,16 +122,37 @@ const editingProduct = ref(null)
 const showProductForm = ref(false)
 const deletingProductId = ref(null)
 
-const fetchProducts = async () => {
-  await productStore.fetchProducts({
-    per_page: 50,
-    search: searchKeyword.value || undefined,
-    category_id: selectedCategoryId.value || undefined
+const currentPage = ref(1)
+const totalPages  = ref(1)
+const PER_PAGE    = 20
+
+const visiblePages = computed(() => {
+  const pages = []
+  const start = Math.max(1, currentPage.value - 2)
+  const end   = Math.min(totalPages.value, start + 4)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
+
+const fetchProducts = async (page = currentPage.value) => {
+  const data = await productStore.fetchProducts({
+    per_page:    PER_PAGE,
+    page,
+    search:      searchKeyword.value || undefined,
+    category_id: selectedCategoryId.value || undefined,
   })
+  currentPage.value = data?.current_page ?? 1
+  totalPages.value  = data?.last_page    ?? 1
 }
 
 const applyFilters = async () => {
-  await fetchProducts()
+  currentPage.value = 1
+  await fetchProducts(1)
+}
+
+const goToPage = async (page) => {
+  if (page < 1 || page > totalPages.value) return
+  await fetchProducts(page)
 }
 
 const formatCurrency = (value) => {
