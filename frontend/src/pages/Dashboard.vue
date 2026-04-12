@@ -168,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useProductStore } from '@/stores/products'
 import { useBatchStore } from '@/stores/batches'
 import { useOrderStore } from '@/stores/orders'
@@ -185,6 +185,7 @@ const alertStore = useAlertStore()
 
 const showAlert = ref(true)
 const revenueChart = ref(null)
+let chartRenderToken = 0
 const dashboardSummary = ref({
   totalRevenue: 0,
   pendingOrders: 0,
@@ -386,6 +387,9 @@ const exportDashboardCSV = () => {
   URL.revokeObjectURL(url)
 }
 
+const getChartLabels = () => [...dashboardSummary.value.revenueLabels]
+const getChartValues = () => dashboardSummary.value.revenueValues.map((value) => Number(value || 0))
+
 const getDashboardIcon = (name) => {
   const iconMap = {
     report: `
@@ -434,7 +438,12 @@ const getDashboardIcon = (name) => {
   return iconMap[name] || iconMap.check
 }
 
-const renderRevenueChart = () => {
+const renderRevenueChart = async () => {
+  const token = ++chartRenderToken
+  await nextTick()
+
+  if (token !== chartRenderToken) return
+
   const canvas = document.getElementById('revenueChart')
   if (!canvas) return
   const ctx = canvas.getContext('2d')
@@ -445,20 +454,17 @@ const renderRevenueChart = () => {
   gradient.addColorStop(1, 'rgba(31, 79, 150, 0.02)')
 
   if (revenueChart.value) {
-    revenueChart.value.data.labels = dashboardSummary.value.revenueLabels
-    revenueChart.value.data.datasets[0].data = dashboardSummary.value.revenueValues
-    revenueChart.value.data.datasets[0].backgroundColor = gradient
-    revenueChart.value.update()
-    return
+    revenueChart.value.destroy()
+    revenueChart.value = null
   }
 
-  revenueChart.value = new Chart(canvas, {
+  revenueChart.value = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: dashboardSummary.value.revenueLabels,
+      labels: getChartLabels(),
       datasets: [{
         label: 'Doanh thu (VND)',
-        data: dashboardSummary.value.revenueValues,
+        data: getChartValues(),
         borderColor: '#1f4f96',
         backgroundColor: gradient,
         fill: true,
@@ -472,6 +478,7 @@ const renderRevenueChart = () => {
       }]
     },
     options: {
+      animation: false,
       responsive: true,
       maintainAspectRatio: false,
       interaction: {
@@ -537,13 +544,11 @@ watch(
   ],
   () => {
     buildDashboardSummary()
-    renderRevenueChart()
-  }
+  },
+  { flush: 'post' }
 )
 
 onMounted(async () => {
-  buildDashboardSummary()
-  renderRevenueChart()
   try {
     await Promise.all([
       orderStore.fetchAdminOrders(),
@@ -555,6 +560,9 @@ onMounted(async () => {
   } catch {
     // giữ dữ liệu hiện tại nếu có lỗi fetch
   }
+
+  buildDashboardSummary()
+  await renderRevenueChart()
 })
 
 onBeforeUnmount(() => {

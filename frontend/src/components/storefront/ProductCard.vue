@@ -2,13 +2,13 @@
   <div
     @mouseenter="$emit('hover', product.id)"
     @mouseleave="$emit('hover', null)"
-    class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:shadow-blue-100/60 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+    class="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:shadow-blue-100/60 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer w-full max-w-xs sm:max-w-sm md:max-w-full"
   >
     <!-- Image -->
-    <div class="relative aspect-square bg-gradient-to-br from-blue-50 to-cyan-50 overflow-hidden" @click="$emit('view', product)">
-      <img v-if="product.image" :src="product.image" :alt="product.name" class="w-full h-full object-contain p-3" />
-      <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 p-4">
-        <div class="w-16 h-16 bg-white/70 rounded-xl flex items-center justify-center shadow-sm">
+    <div class="relative aspect-square bg-gradient-to-br from-blue-50 to-cyan-50 overflow-hidden max-w-full mx-auto" @click="$emit('view', product)">
+      <img v-if="product.image" :src="product.image" :alt="product.name" class="w-full h-full object-contain p-2 sm:p-3" />
+      <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2 p-2 sm:p-4">
+        <div class="w-12 h-12 sm:w-16 sm:h-16 bg-white/70 rounded-xl flex items-center justify-center shadow-sm">
           <svg class="w-8 h-8 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="3" y="3" width="18" height="18" rx="2"/>
             <path d="M3 9h18M9 21V9"/>
@@ -40,7 +40,7 @@
     </div>
 
     <!-- Info -->
-    <div class="p-3" @click="$emit('view', product)">
+    <div class="p-2 sm:p-3" @click="$emit('view', product)">
       <p class="text-xs text-gray-400 font-medium mb-0.5">{{ product.brand }}</p>
       <h3 class="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug mb-1 min-h-[2.5rem]">{{ product.name }}</h3>
       <p class="text-xs text-gray-400 mb-2">{{ product.dosage_form }} · {{ product.volume }}</p>
