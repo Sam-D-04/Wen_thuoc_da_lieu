@@ -6,14 +6,14 @@
         <p class="text-sm text-gray-400 mt-1">Xin chào, <strong class="text-primary">{{ authStore.userName }}</strong></p>
       </div>
       <button
-        @click="handleLogout"
-        class="flex items-center gap-2 text-sm text-gray-500 hover:text-red-500 transition-colors border border-gray-200 px-3 py-2 rounded-lg hover:border-red-200"
+        @click="router.push('/shop')"
+        class="flex items-center gap-2 text-sm text-white bg-primary hover:bg-blue-700 transition-colors border border-primary px-3 py-2 rounded-lg shadow"
       >
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+          <path d="M5 12h14"/>
+          <polyline points="13 18 19 12 13 6"/>
         </svg>
-        Đăng xuất
+        Tiếp tục mua sắm
       </button>
     </div>
 

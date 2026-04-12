@@ -334,14 +334,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
-const activeTab = ref('login')
+const activeTab = ref(route.query.tab === 'register' ? 'register' : 'login')
 const showPassword = ref(false)
 const isLoading = ref(false)
 const loginError = ref('')
@@ -360,6 +361,14 @@ const otpCode = computed(() => otpDigits.join(''))
 
 const loginForm = reactive({ email: '', password: '', remember: false })
 const registerForm = reactive({ name: '', email: '', phone: '', password: '', confirmPassword: '', agreeTerms: false })
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    activeTab.value = tab === 'register' ? 'register' : 'login'
+  },
+  { immediate: true }
+)
 
 // ── OTP helpers ──────────────────────────────────────────────────────────────
 

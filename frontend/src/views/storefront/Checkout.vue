@@ -147,6 +147,17 @@
             <svg v-else class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             {{ isSubmitting ? 'Đang đặt hàng...' : orderSuccess ? 'Đã đặt hàng!' : 'Xác nhận đặt hàng' }}
           </button>
+
+          <button
+            @click="router.push('/shop')"
+            class="w-full mt-3 bg-primary/5 text-primary border border-primary/30 font-semibold py-3 rounded-xl transition-all duration-200 hover:bg-primary/10 hover:border-primary/60 hover:text-primary shadow-none flex items-center justify-center gap-2"
+          >
+            <svg class="w-4 h-4 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14"/>
+              <polyline points="13 18 19 12 13 6"/>
+            </svg>
+            Tiếp tục mua sắm
+          </button>
         </div>
       </div>
     </div>

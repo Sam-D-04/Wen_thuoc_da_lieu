@@ -2,7 +2,7 @@
   <div>
     <!-- Hero Banner -->
     <div class="relative bg-gradient-to-r from-primary via-blue-600 to-cyan-500 overflow-hidden">
-      <div class="max-w-7xl mx-auto px-4 py-16 md:py-24">
+      <div class="max-w-7xl mx-auto px-4 py-12 md:py-16">
         <div class="grid md:grid-cols-2 gap-8 items-center">
           <div class="text-white">
             <div class="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 text-sm mb-4">
@@ -28,9 +28,6 @@
                 </svg>
                 Mua sắm ngay
               </button>
-              <button class="border-2 border-white/50 text-white font-medium px-5 py-3 rounded-xl hover:bg-white/10 transition-all duration-200">
-                Tư vấn miễn phí
-              </button>
             </div>
           </div>
           <div class="hidden md:flex items-center justify-center">
@@ -43,11 +40,17 @@
                 </svg>
               </div>
               <!-- Floating badges -->
+              <div class="absolute top-20 left-0 bg-white rounded-xl px-3 py-2 shadow-lg text-xs font-bold text-emerald-600">
+                🎁 Miễn phí vận chuyển
+              </div>
               <div class="absolute top-4 right-0 bg-white rounded-xl px-3 py-2 shadow-lg text-xs font-bold text-primary animate-bounce-slow">
                 ✓ Chính hãng 100%
               </div>
-              <div class="absolute bottom-8 left-0 bg-white rounded-xl px-3 py-2 shadow-lg text-xs font-bold text-green-600">
-                🚚 Giao hỏa tốc
+              <div class="absolute bottom-8 left-0 bg-white rounded-xl px-3 py-2 shadow-lg text-xs font-bold text-blue-700">
+                ⚡ Giao hỏa tốc
+              </div>
+              <div class="absolute bottom-20 right-0 bg-white rounded-xl px-3 py-2 shadow-lg text-xs font-bold text-red-500">
+                🔥 Giảm giá đến 80%
               </div>
             </div>
           </div>
@@ -65,9 +68,9 @@
     <div class="bg-white border-b border-gray-100">
       <div class="max-w-7xl mx-auto px-4 py-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div v-for="stat in stats" :key="stat.label" class="flex items-center gap-3">
+          <div v-for="stat in stats" :key="stat.label" class="flex items-center justify-center gap-3 text-center">
             <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0" v-html="stat.icon"></div>
-            <div>
+            <div class="text-center">
               <div class="text-sm font-bold text-gray-800">{{ stat.value }}</div>
               <div class="text-xs text-gray-400">{{ stat.label }}</div>
             </div>
@@ -79,20 +82,41 @@
     <!-- Category shortcuts -->
     <div class="max-w-7xl mx-auto px-4 py-8">
       <h2 class="text-xl font-bold text-gray-800 mb-5">Danh mục nổi bật</h2>
-      <div class="flex flex-wrap gap-2">
-        <button
-          v-for="cat in categoryShortcuts"
-          :key="cat.slug"
-          @click="filterByCategory(cat.slug)"
-          :class="[
-            'px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all duration-200',
-            selectedCategory === cat.slug
-              ? cat.activeColor
-              : cat.color
-          ]"
-        >
-          {{ cat.name }}
-        </button>
+      <div>
+        <!-- Mobile: Dropdown filter -->
+        <div class="block sm:hidden">
+          <select v-model="selectedCategory" class="w-full border-2 border-gray-200 rounded-full px-4 py-2 text-sm font-semibold mb-3">
+            <option value="">Tất cả sản phẩm</option>
+            <option v-for="cat in categoryShortcuts" :key="cat.slug" :value="cat.slug">{{ cat.name }}</option>
+          </select>
+        </div>
+        <!-- Desktop: Tab filter -->
+        <div class="hidden sm:grid gap-3" :style="`grid-template-columns: repeat(${1 + categoryShortcuts.length}, minmax(0, 1fr));`">
+          <button
+            @click="selectedCategory = ''"
+            :class="[
+              'flex-none w-[170px] min-h-12 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all duration-200 flex items-center justify-center text-center',
+              !selectedCategory
+                ? 'bg-primary text-white border-primary'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+            ]"
+          >
+            Tất cả sản phẩm
+          </button>
+          <button
+            v-for="cat in categoryShortcuts"
+            :key="cat.slug"
+            @click="filterByCategory(cat.slug)"
+            :class="[
+              'flex-none w-[170px] min-h-12 px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all duration-200 flex items-center justify-center text-center',
+              selectedCategory === cat.slug
+                ? cat.activeColor
+                : cat.color
+            ]"
+          >
+            {{ cat.name }}
+          </button>
+        </div>
         <p v-if="!categoryShortcuts.length" class="text-sm text-gray-400">Chưa có danh mục để hiển thị</p>
       </div>
     </div>
@@ -107,24 +131,12 @@
           <p class="text-sm text-gray-400">{{ displayedProducts.length }} sản phẩm</p>
         </div>
         <div class="flex items-center gap-2">
-          <!-- Search quick filter -->
-          <div class="relative hidden sm:block">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Lọc sản phẩm..."
-              class="pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary bg-gray-50 w-48"
-            />
-            <svg class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-          </div>
           <button
             v-if="selectedCategory"
             @click="selectedCategory = ''"
             class="text-xs text-primary border border-primary/30 px-3 py-2 rounded-lg hover:bg-primary hover:text-white transition-colors"
           >
-            Xem tất cả
+            Tất cả sản phẩm
           </button>
         </div>
       </div>
@@ -222,7 +234,7 @@ const categoryShortcuts = computed(() => {
 const stats = [
   { label: 'Sản phẩm', value: '500+', icon: '<svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>' },
   { label: 'Khách hàng', value: '10,000+', icon: '<svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
-  { label: 'Thương hiệu', value: '50+', icon: '<svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>' },
+  { label: 'Thương hiệu', value: '50+', icon: '<svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 23l-9-9V3h11l9.59 9.59a2 2 0 0 1 0 2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>' },
   { label: 'Đánh giá', value: '4.9★', icon: '<svg class="w-4 h-4 text-warning" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' },
 ]
 

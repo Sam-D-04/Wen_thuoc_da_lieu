@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-xl shadow-blue-100/50 p-10 max-w-md w-full text-center border border-gray-100">
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-xl shadow-blue-100/50 p-4 sm:p-10 max-w-xs sm:max-w-md w-full text-center border border-gray-100 mx-auto">
 
       <!-- Success -->
       <template v-if="status === 'success'">

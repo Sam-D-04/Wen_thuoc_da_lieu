@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="max-w-7xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
     <!-- Loading state -->
     <div v-if="!product" class="flex items-center justify-center py-20">
       <div class="text-center">
@@ -29,13 +29,13 @@
         <span>{{ product.name }}</span>
       </nav>
 
-      <div class="grid md:grid-cols-2 gap-10">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
         <!-- Image -->
         <div>
-          <div class="aspect-square bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-gray-100 flex items-center justify-center overflow-hidden">
-            <img v-if="product.image" :src="product.image" :alt="product.name" class="w-full h-full object-contain p-8" />
-            <div v-else class="flex flex-col items-center justify-center gap-3 p-8">
-              <div class="w-24 h-24 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+          <div class="aspect-square bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-gray-100 flex items-center justify-center overflow-hidden max-w-xs mx-auto md:max-w-full">
+            <img v-if="product.image" :src="product.image" :alt="product.name" class="w-full h-full object-contain p-4 sm:p-8" />
+            <div v-else class="flex flex-col items-center justify-center gap-3 p-4 sm:p-8">
+              <div class="w-20 h-20 sm:w-24 sm:h-24 bg-white rounded-2xl flex items-center justify-center shadow-sm">
                 <svg class="w-12 h-12 text-blue-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <rect x="3" y="3" width="18" height="18" rx="2"/>
                   <path d="M3 9h18M9 21V9"/>
@@ -47,11 +47,11 @@
         </div>
 
         <!-- Info -->
-        <div class="flex flex-col gap-5">
+        <div class="flex flex-col gap-4 sm:gap-5">
           <div>
             <p class="text-sm text-primary font-semibold mb-1">{{ product.brand }}</p>
             <h1 class="text-2xl font-bold text-gray-800 leading-snug">{{ product.name }}</h1>
-            <div class="flex items-center gap-2 mt-2 text-sm text-gray-500">
+            <div class="flex flex-wrap items-center gap-2 mt-2 text-sm text-gray-500">
               <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ product.dosage_form }}</span>
               <span class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ product.volume }}</span>
               <span v-if="product.stock_quantity > 0" class="text-green-600 font-medium flex items-center gap-1">
@@ -85,7 +85,7 @@
           </div>
 
           <!-- Quantity -->
-          <div class="flex items-center gap-4">
+          <div class="flex flex-wrap items-center gap-2 sm:gap-4">
             <span class="text-sm font-medium text-gray-700">Số lượng:</span>
             <div class="flex items-center gap-0 border border-gray-200 rounded-xl overflow-hidden">
               <button
@@ -105,7 +105,7 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex gap-3">
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
               @click="handleAddToCart"
               :disabled="product.stock_quantity === 0"
@@ -133,8 +133,8 @@
       </div>
 
       <!-- Description tabs -->
-      <div class="mt-12">
-        <div class="flex gap-0 border-b border-gray-200 mb-6">
+      <div class="mt-8 sm:mt-12">
+        <div class="flex flex-wrap gap-0 border-b border-gray-200 mb-4 sm:mb-6">
           <button
             v-for="tab in tabs"
             :key="tab.key"
@@ -149,15 +149,9 @@
             {{ tab.label }}
           </button>
         </div>
-        <div class="prose prose-sm max-w-none text-gray-600 leading-relaxed">
+        <div class="prose prose-sm max-w-none text-gray-600 leading-relaxed break-words">
           <div v-if="activeTab === 'description'">
             <p>{{ product.description }}</p>
-          </div>
-          <div v-if="activeTab === 'ingredients'">
-            <p class="text-gray-500 italic">Thông tin thành phần sẽ được cập nhật từ backend khi kết nối API.</p>
-          </div>
-          <div v-if="activeTab === 'usage'">
-            <p class="text-gray-500 italic">Hướng dẫn sử dụng sẽ được cập nhật khi kết nối API backend.</p>
           </div>
         </div>
       </div>
@@ -182,8 +176,6 @@ const notFound = ref(false)
 
 const tabs = [
   { key: 'description', label: 'Mô tả sản phẩm' },
-  { key: 'ingredients', label: 'Thành phần' },
-  { key: 'usage', label: 'Hướng dẫn sử dụng' },
 ]
 
 const product = computed(() => {
