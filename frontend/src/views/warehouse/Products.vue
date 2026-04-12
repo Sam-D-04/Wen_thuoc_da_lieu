@@ -189,7 +189,7 @@ const changePage = (page) => {
   reload()
 }
 
-const resolveCategory = (product) => product.category_name || product.category || 'N/A'
+const resolveCategory = (product) => product.category?.name || product.category_name || 'N/A'
 const resolveDosage = (product) => product.dosage_form || product.unit || 'Chưa cập nhật'
 const resolveVolume = (product) => product.volume || 'Chưa cập nhật'
 
