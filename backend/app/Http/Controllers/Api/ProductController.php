@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -95,7 +94,7 @@ class ProductController extends Controller
         $validated['created_by'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = $this->toBase64($request->file('image'));
         }
 
         $product = Product::create($validated);
@@ -127,10 +126,7 @@ class ProductController extends Controller
         $validated['updated_by'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            if ($product->image && !str_starts_with($product->image, 'data:') && Storage::disk('public')->exists($product->image)) {
-                Storage::disk('public')->delete($product->image);
-            }
-            $validated['image'] = $request->file('image')->store('products', 'public');
+            $validated['image'] = $this->toBase64($request->file('image'));
         }
 
         $product->update($validated);
@@ -146,4 +142,11 @@ class ProductController extends Controller
         return response()->json(['message' => 'Đã xóa sản phẩm']);
     }
 
+    // ─── Helper ─────────────────────────────────────────
+    private function toBase64(\Illuminate\Http\UploadedFile $file): string
+    {
+        $mime = $file->getMimeType();
+        $data = base64_encode(file_get_contents($file->getRealPath()));
+        return "data:{$mime};base64,{$data}";
+    }
 }

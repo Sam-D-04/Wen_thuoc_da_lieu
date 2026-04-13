@@ -25,15 +25,10 @@ const resolveImageUrl = (value) => {
   const raw = String(value).trim()
   if (!raw) return ''
 
-  if (/^(data:image\/|blob:)/i.test(raw)) {
-    return raw
-  }
-
   if (/^https?:\/\//i.test(raw)) {
     try {
       const parsed = new URL(raw)
-      const isLoopbackHost = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname)
-      if (isLoopbackHost && !parsed.port) {
+      if (parsed.hostname === 'localhost' && !parsed.port && parsed.pathname.startsWith('/storage/')) {
         return `${API_ORIGIN}${parsed.pathname}${parsed.search || ''}`
       }
     } catch (error) {
@@ -42,7 +37,7 @@ const resolveImageUrl = (value) => {
     return raw
   }
 
-  const normalized = raw.replace(/\\/g, '/').replace(/^\/+/, '')
+  const normalized = raw.replace(/^\/+/, '')
   if (normalized.startsWith('storage/')) {
     return `${API_ORIGIN}/${normalized}`
   }
