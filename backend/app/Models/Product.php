@@ -68,7 +68,13 @@ class Product extends Model
         if (!$this->image) return null;
         if (str_starts_with($this->image, 'http')) return $this->image;
 
-        return Storage::disk('r2')->url($this->image);
+        // Legacy: relative path stored before R2 migration
+        $url = Storage::disk('public')->url($this->image);
+        if (str_starts_with($url, 'http')) {
+            return $url;
+        }
+        $origin = request()?->getSchemeAndHttpHost() ?: rtrim(config('app.url'), '/');
+        return rtrim($origin, '/') . '/' . ltrim($url, '/');
     }
 
     public function getIsLowStockAttribute(): bool

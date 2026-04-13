@@ -102,7 +102,8 @@ class ProductController extends Controller
         $validated['created_by'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')->store('products', 'r2');
+            $path = $request->file('image')->store('products', 'r2');
+            $validated['image'] = Storage::disk('r2')->url($path);
         }
 
         $product = Product::create($validated);
@@ -134,10 +135,15 @@ class ProductController extends Controller
         $validated['updated_by'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            if ($product->image && Storage::disk('r2')->exists($product->image)) {
-                Storage::disk('r2')->delete($product->image);
+            // Old images stored as full URL; new ones are relative paths
+            $oldPath = $product->image && !str_starts_with($product->image, 'http')
+                ? $product->image
+                : null;
+            if ($oldPath && Storage::disk('r2')->exists($oldPath)) {
+                Storage::disk('r2')->delete($oldPath);
             }
-            $validated['image'] = $request->file('image')->store('products', 'r2');
+            $path = $request->file('image')->store('products', 'r2');
+            $validated['image'] = Storage::disk('r2')->url($path);
         }
 
         $product->update($validated);
@@ -150,8 +156,11 @@ class ProductController extends Controller
     {
         $product = Product::findOrFail($id);
 
-        if ($product->image && Storage::disk('r2')->exists($product->image)) {
-            Storage::disk('r2')->delete($product->image);
+        $imagePath = $product->image && !str_starts_with($product->image, 'http')
+            ? $product->image
+            : null;
+        if ($imagePath && Storage::disk('r2')->exists($imagePath)) {
+            Storage::disk('r2')->delete($imagePath);
         }
 
         $product->delete();
