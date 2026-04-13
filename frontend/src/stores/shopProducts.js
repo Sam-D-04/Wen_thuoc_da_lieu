@@ -43,6 +43,12 @@ const resolveImageUrl = (value) => {
   if (normalized.startsWith('storage/')) {
     return `${API_ORIGIN}/${normalized}`
   }
+
+  // Nếu chỉ là filename (ví dụ: "cerave-cleanser.jpg"), trả về asset phía frontend
+  if (/^[^\/]+\.(jpg|jpeg|png|gif|svg|webp)$/i.test(normalized)) {
+    return `/assets/products/${normalized}`
+  }
+
   return `${API_ORIGIN}/storage/${normalized}`
 }
 

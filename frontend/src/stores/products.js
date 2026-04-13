@@ -46,8 +46,17 @@ const resolveImageUrl = (value) => {
   if (normalized.startsWith('storage/')) {
     return `${API_ORIGIN}/${normalized}`
   }
+  // Nếu giá trị bắt đầu bằng products/, giữ nguyên quy tắc cũ
   if (normalized.startsWith('products/')) {
     return `${API_ORIGIN}/storage/${normalized}`
+  }
+
+  // Nếu chỉ là filename (ví dụ: "cerave-cleanser.jpg"), thử trỏ tới
+  // /storage/products/<filename> — thích hợp cho dữ liệu seed hoặc cũ
+  if (/^[^\/]+\.(jpg|jpeg|png|gif|svg|webp)$/i.test(normalized)) {
+    // Trường hợp chỉ là filename (ví dụ dữ liệu seed), trả về asset phía frontend
+    // để ảnh có thể được commit cùng repo và hiển thị ngay khi git clone.
+    return `/assets/products/${normalized}`
   }
   return `${API_ORIGIN}/${normalized}`
 }
