@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Batch;
 
 class ProductController extends Controller
 {
@@ -105,6 +106,7 @@ class ProductController extends Controller
             'volume'        => 'required|string|max:20',
             'stock_warning' => 'nullable|integer|min:0',
             'is_active'     => 'boolean',
+            'stock_quantity' => 'nullable|integer|min:0',
             'image'         => 'nullable|image|max:2048',
         ]);
 
@@ -116,6 +118,19 @@ class ProductController extends Controller
         }
 
         $product = Product::create($validated);
+
+        // Nếu client cung cấp stock_quantity > 0 khi tạo sản phẩm, tạo một lô hàng tương ứng
+        if (!empty($validated['stock_quantity']) && intval($validated['stock_quantity']) > 0) {
+            $quantity = intval($validated['stock_quantity']);
+            Batch::create([
+                'product_id' => $product->id,
+                'batch_code' => Str::upper(Str::random(8)),
+                'expiry_date' => now()->addYear()->toDateString(),
+                'quantity' => $quantity,
+                'remaining_quantity' => $quantity,
+                'created_by' => $request->user()->id,
+            ]);
+        }
 
         return response()->json($product->load(['category', 'brand']), 201);
     }
@@ -135,6 +150,7 @@ class ProductController extends Controller
             'volume'        => 'sometimes|string|max:20',
             'stock_warning' => 'nullable|integer|min:0',
             'is_active'     => 'boolean',
+            'stock_quantity' => 'nullable|integer|min:0',
             'image'         => 'nullable|image|max:2048',
         ]);
 
@@ -150,7 +166,24 @@ class ProductController extends Controller
             $validated['image'] = $request->file('image')->store('products', 'public');
         }
 
+        $prevQty = $product->stock_quantity ?? 0;
         $product->update($validated);
+
+        // Nếu client cập nhật stock_quantity tăng lên, tạo một lô mới tương ứng với phần tăng
+        if (isset($validated['stock_quantity'])) {
+            $newQty = intval($validated['stock_quantity']);
+            if ($newQty > $prevQty) {
+                $added = $newQty - $prevQty;
+                Batch::create([
+                    'product_id' => $product->id,
+                    'batch_code' => Str::upper(Str::random(8)),
+                    'expiry_date' => now()->addYear()->toDateString(),
+                    'quantity' => $added,
+                    'remaining_quantity' => $added,
+                    'created_by' => $request->user()->id,
+                ]);
+            }
+        }
 
         return response()->json($product->load(['category', 'brand']));
     }
