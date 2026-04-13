@@ -11,6 +11,15 @@ use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    /**
+     * Returns 'r2' or 's3' when cloud storage is configured, otherwise 'public'.
+     */
+    private function uploadDisk(): string
+    {
+        $disk = config('filesystems.default', 'public');
+        return in_array($disk, ['r2', 's3']) ? $disk : 'public';
+    }
+
     // ─── GET /api/products ───────────────────────────────
     public function index(Request $request)
     {
@@ -102,8 +111,11 @@ class ProductController extends Controller
         $validated['created_by'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'r2');
-            $validated['image'] = Storage::disk('r2')->url($path);
+            $disk = $this->uploadDisk();
+            $path = $request->file('image')->store('products', $disk);
+            $validated['image'] = $disk === 'public'
+                ? $path
+                : Storage::disk($disk)->url($path);
         }
 
         $product = Product::create($validated);
@@ -135,15 +147,17 @@ class ProductController extends Controller
         $validated['updated_by'] = $request->user()->id;
 
         if ($request->hasFile('image')) {
-            // Old images stored as full URL; new ones are relative paths
+            $disk = $this->uploadDisk();
             $oldPath = $product->image && !str_starts_with($product->image, 'http')
                 ? $product->image
                 : null;
-            if ($oldPath && Storage::disk('r2')->exists($oldPath)) {
-                Storage::disk('r2')->delete($oldPath);
+            if ($oldPath && Storage::disk($disk)->exists($oldPath)) {
+                Storage::disk($disk)->delete($oldPath);
             }
-            $path = $request->file('image')->store('products', 'r2');
-            $validated['image'] = Storage::disk('r2')->url($path);
+            $path = $request->file('image')->store('products', $disk);
+            $validated['image'] = $disk === 'public'
+                ? $path
+                : Storage::disk($disk)->url($path);
         }
 
         $product->update($validated);
@@ -156,11 +170,12 @@ class ProductController extends Controller
     {
         $product = Product::findOrFail($id);
 
+        $disk = $this->uploadDisk();
         $imagePath = $product->image && !str_starts_with($product->image, 'http')
             ? $product->image
             : null;
-        if ($imagePath && Storage::disk('r2')->exists($imagePath)) {
-            Storage::disk('r2')->delete($imagePath);
+        if ($imagePath && Storage::disk($disk)->exists($imagePath)) {
+            Storage::disk($disk)->delete($imagePath);
         }
 
         $product->delete();
