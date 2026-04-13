@@ -224,27 +224,38 @@ const handleFormSaved = async (saved) => {
   error.value = ''
 
   try {
-    const payload = {
-      name: saved.name,
-      sku: saved.slug || resolveSlug(saved),
-      category_id: saved.category_id,
-      brand_id: saved.brand_id,
-      unit: saved.dosage_form || 'Tuyp',
-      price: Number(saved.price_listed || 0),
-      stock_quantity: Number(saved.stock_quantity || 0),
-      reorder_level: Number(saved.reorder_level || 0),
-      is_active: Boolean(saved.is_active),
-      description: saved.description || '',
-      dosage_form: saved.dosage_form || '',
-      volume: saved.volume || '',
-      image_url: saved.image_url || ''
-    }
+      // Chuẩn bị payload: nếu có file ảnh (image_file) thì dùng FormData để upload
+      let payload = {
+        name: saved.name,
+        sku: saved.slug || resolveSlug(saved),
+        category_id: saved.category_id,
+        brand_id: saved.brand_id,
+        unit: saved.dosage_form || 'Tuyp',
+        price: Number(saved.price_listed || 0),
+        stock_quantity: Number(saved.stock_quantity || 0),
+        reorder_level: Number(saved.reorder_level || 0),
+        is_active: Boolean(saved.is_active),
+        description: saved.description || '',
+        dosage_form: saved.dosage_form || '',
+        volume: saved.volume || '',
+        image_url: saved.image_url || ''
+      }
 
-    if (saved.id && rows.value.some((item) => Number(item.id) === Number(saved.id))) {
-      await warehouseApi.updateProduct(saved.id, payload)
-    } else {
-      await warehouseApi.createProduct(payload)
-    }
+      if (saved.image_file) {
+        const fd = new FormData()
+        Object.keys(payload).forEach((k) => {
+          if (payload[k] !== undefined && payload[k] !== null) fd.append(k, payload[k])
+        })
+        fd.append('image', saved.image_file)
+        payload = fd
+      }
+
+      if (saved.id && rows.value.some((item) => Number(item.id) === Number(saved.id))) {
+        // cập nhật (updateProduct hỗ trợ FormData)
+        await warehouseApi.updateProduct(saved.id, payload)
+      } else {
+        await warehouseApi.createProduct(payload)
+      }
 
     editingProduct.value = null
     showProductForm.value = false

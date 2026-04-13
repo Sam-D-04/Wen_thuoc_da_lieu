@@ -149,7 +149,28 @@ export const warehouseApi = {
   },
 
   async createProduct(payload) {
-    const response = await apiClient.post('/products', payload)
+    // Hỗ trợ upload file: nếu payload là FormData hoặc chứa trường image_file
+    let isFormData = false
+    let body = payload
+    if (payload instanceof FormData) {
+      isFormData = true
+      body = payload
+    } else if (payload && payload.image_file) {
+      isFormData = true
+      const fd = new FormData()
+      Object.keys(payload).forEach((k) => {
+        if (k === 'image_file') return
+        if (payload[k] !== undefined && payload[k] !== null) {
+          fd.append(k, payload[k])
+        }
+      })
+      fd.append('image', payload.image_file)
+      body = fd
+    }
+
+    const response = await apiClient.post('/products', body, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    })
     return response.data
   },
 

@@ -13,6 +13,9 @@ class ProductController extends Controller
     // ─── GET /api/products ───────────────────────────────
     public function index(Request $request)
     {
+        // Mặc định chỉ hiển thị sản phẩm còn hàng (có lô tồn) cho client công khai.
+        // Nếu request được thực hiện bởi admin/warehouse (đã xác thực), hiển thị tất cả sản
+        // phẩm (để admin có thể thêm/sửa sản phẩm ngay cả khi chưa có lô).
         $query = Product::with(['category', 'brand'])
             ->withSum([
                 'batches as batch_remaining_quantity' => function ($q) {
@@ -20,11 +23,25 @@ class ProductController extends Controller
                       ->whereDate('expiry_date', '>=', now()->toDateString());
                 }
             ], 'remaining_quantity')
-            ->active()
-            ->whereHas('batches', function ($q) {
+            ->active();
+
+        $onlyAvailable = true;
+        if ($request->user()) {
+            // User model có các helper isAdmin/isWarehouse
+            if (method_exists($request->user(), 'isAdmin') && $request->user()->isAdmin()) {
+                $onlyAvailable = false;
+            }
+            if (method_exists($request->user(), 'isWarehouse') && $request->user()->isWarehouse()) {
+                $onlyAvailable = false;
+            }
+        }
+
+        if ($onlyAvailable) {
+            $query->whereHas('batches', function ($q) {
                 $q->where('remaining_quantity', '>', 0)
                   ->whereDate('expiry_date', '>=', now()->toDateString());
             });
+        }
 
         if ($s = $request->input('search')) {
             $query->where(function ($q) use ($s) {
