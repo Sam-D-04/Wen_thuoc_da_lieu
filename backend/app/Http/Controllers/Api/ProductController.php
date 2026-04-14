@@ -63,6 +63,38 @@ class ProductController extends Controller
         return response()->json($query->paginate($perPage));
     }
 
+    // ─── GET /api/admin/products (admin only) ───────────
+    public function adminIndex(Request $request)
+    {
+        $query = Product::with(['category', 'brand'])
+            ->withSum('batches as stock_quantity', 'remaining_quantity');
+
+        if ($s = $request->input('search')) {
+            $query->where(function ($q) use ($s) {
+                $q->where('name', 'like', "%{$s}%")
+                  ->orWhereHas('brand', fn($b) => $b->where('name', 'like', "%{$s}%"));
+            });
+        }
+
+        if ($catId = $request->input('category_id')) {
+            $query->where('category_id', $catId);
+        }
+
+        if ($brandId = $request->input('brand_id')) {
+            $query->where('brand_id', $brandId);
+        }
+
+        match ($request->input('sort', 'latest')) {
+            'price_asc'  => $query->orderBy('price_listed', 'asc'),
+            'price_desc' => $query->orderBy('price_listed', 'desc'),
+            default      => $query->latest(),
+        };
+
+        $perPage = min((int) $request->input('per_page', 20), 100);
+
+        return response()->json($query->paginate($perPage));
+    }
+
     // ─── GET /api/products/{slug} ────────────────────────
     public function show(string $slug)
     {

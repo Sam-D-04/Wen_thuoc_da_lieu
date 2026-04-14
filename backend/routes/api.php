@@ -39,7 +39,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('admin')->group(function () {
 
         // Users
-        Route::get('/admin/users',  [AuthController::class, 'adminUsers']);
+        Route::get('/admin/users',    [AuthController::class, 'adminUsers']);
+
+        // All products (no stock/batch filter)
+        Route::get('/admin/products', [ProductController::class, 'adminIndex']);
 
         // Products CRUD
         Route::post('/products',           [ProductController::class, 'store']);

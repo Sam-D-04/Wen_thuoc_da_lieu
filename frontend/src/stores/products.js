@@ -84,14 +84,13 @@ export const useProductStore = defineStore('product', () => {
   const lowStockProducts = computed(() => products.value.filter(p => Number(p.stock_quantity ?? p.stock ?? 0) <= 10).length)
 
   const fetchProducts = async (params = {}) => {
-    const response = await apiClient.get('/products', {
+    const response = await apiClient.get('/admin/products', {
       params: {
         per_page:    params.per_page    || 50,
         page:        params.page        || 1,
         search:      params.search      || undefined,
         category_id: params.category_id || undefined,
         brand_id:    params.brand_id    || undefined,
-        category:    params.category    || undefined,
         sort:        params.sort        || undefined,
       }
     })

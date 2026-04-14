@@ -144,7 +144,16 @@ export const warehouseApi = {
   },
 
   async getProducts(params) {
-    const response = await apiClient.get('/products', { params })
+    const response = await apiClient.get('/admin/products', {
+      params: {
+        page:        params?.page || 1,
+        per_page:    params?.pageSize || 10,
+        search:      params?.search || undefined,
+        category_id: params?.category_id || undefined,
+        brand_id:    params?.brand_id || undefined,
+        sort:        params?.sort || undefined,
+      }
+    })
     return toPaginated(response.data, Number(params?.page || 1), Number(params?.pageSize || 10))
   },
 
