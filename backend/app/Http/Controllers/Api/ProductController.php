@@ -169,7 +169,26 @@ class ProductController extends Controller
     // ─── DELETE /api/products/{id} (admin) ──────────────
     public function destroy(int $id)
     {
-        Product::findOrFail($id)->delete();
+        $product = Product::findOrFail($id);
+
+        if ($product->orderItems()->exists()) {
+            return response()->json([
+                'message' => 'Không thể xóa sản phẩm đã có trong đơn hàng. Hãy vô hiệu hóa (tắt hiển thị) sản phẩm thay thế.'
+            ], 422);
+        }
+
+        if ($product->inventoryTransactions()->exists()) {
+            return response()->json([
+                'message' => 'Không thể xóa sản phẩm đã có lịch sử nhập kho. Hãy vô hiệu hóa (tắt hiển thị) sản phẩm thay thế.'
+            ], 422);
+        }
+
+        // Xóa các bản ghi phụ không có cascade trước khi xóa sản phẩm
+        $product->warehouseAlerts()->delete();
+        \DB::table('cart_items')->where('product_id', $id)->delete();
+
+        // batches và product_tag có ON DELETE CASCADE nên tự xóa
+        $product->delete();
 
         return response()->json(['message' => 'Đã xóa sản phẩm']);
     }

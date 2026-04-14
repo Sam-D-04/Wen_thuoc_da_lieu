@@ -229,8 +229,8 @@ const handleDeleteProduct = async (product) => {
     await warehouseApi.deleteProduct(product.id)
     await fetchProducts()
   } catch (error) {
-    console.error(error)
-    window.alert('Không thể xóa sản phẩm. Vui lòng thử lại.')
+    const msg = error?.response?.data?.message || 'Không thể xóa sản phẩm. Vui lòng thử lại.'
+    window.alert(msg)
   } finally {
     deletingProductId.value = null
   }

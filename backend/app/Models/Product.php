@@ -61,6 +61,11 @@ class Product extends Model
         return $this->hasMany(WarehouseAlert::class);
     }
 
+    public function inventoryTransactions()
+    {
+        return $this->hasMany(InventoryTransaction::class);
+    }
+
     // ─── Accessors ──────────────────────────────────────
     public function getImageUrlAttribute(): ?string
     {

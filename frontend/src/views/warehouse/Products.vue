@@ -269,7 +269,7 @@ const handleDelete = async (item) => {
     await warehouseApi.deleteProduct(item.id)
     await reload()
   } catch (err) {
-    error.value = err?.message || 'Khong xoa duoc san pham.'
+    error.value = err?.response?.data?.message || err?.message || 'Không xóa được sản phẩm.'
   } finally {
     loading.value = false
   }
